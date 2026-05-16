@@ -51,6 +51,12 @@ export function normalizeOsm(elements: readonly RawOsmElement[]): Camera[] {
   return out;
 }
 
+// TODO(phase-0b-3): use tags.operator to distinguish alpr_government (police/city)
+// from alpr_private (HOA, mall, commercial). Currently all DeFlock records map to
+// alpr_government — conservative for routing (more avoidance) but loses the
+// distinction. Implementing requires an operator-string classifier (probably
+// a curated list of known police-department names + a "private if not police"
+// fallback).
 /**
  * Map DeFlock's free-text `manufacturer` tag to a CameraType.
  * Known ALPR vendors: Flock, Motorola Vigilant, Rekor, Genetec.
