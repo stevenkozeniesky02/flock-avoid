@@ -106,8 +106,8 @@ export class MapView {
         type: 'geojson',
         data: featureCollection,
         cluster: true,
-        clusterMaxZoom: 13,
-        clusterRadius: 50,
+        clusterMaxZoom: 11,
+        clusterRadius: 40,
       });
       this.map.addLayer({
         id: CLUSTER_LAYER,
@@ -116,19 +116,25 @@ export class MapView {
         filter: ['has', 'point_count'],
         paint: {
           'circle-color': '#3a5fff',
-          'circle-radius': ['step', ['get', 'point_count'], 14, 50, 18, 200, 22, 1000, 28],
+          'circle-opacity': 0.85,
+          'circle-radius': [
+            'interpolate', ['linear'], ['zoom'],
+            3, ['step', ['get', 'point_count'], 5, 50, 7, 200, 9, 1000, 11],
+            6, ['step', ['get', 'point_count'], 8, 50, 11, 200, 14, 1000, 18],
+            10, ['step', ['get', 'point_count'], 12, 50, 16, 200, 20, 1000, 26],
+          ],
           'circle-stroke-color': '#ffffff',
-          'circle-stroke-width': 2.5,
+          'circle-stroke-width': 2,
         },
       });
       this.map.addLayer({
         id: CLUSTER_COUNT_LAYER,
         type: 'symbol',
         source: CAMERA_SOURCE,
-        filter: ['has', 'point_count'],
+        filter: ['all', ['has', 'point_count'], ['>=', ['zoom'], 5]],
         layout: {
           'text-field': '{point_count_abbreviated}',
-          'text-size': 12,
+          'text-size': ['interpolate', ['linear'], ['zoom'], 5, 9, 10, 12],
           'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold'],
         },
         paint: { 'text-color': '#ffffff' },
