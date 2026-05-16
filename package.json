@@ -10,7 +10,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
-    "lint": "eslint src",
+    "lint": "eslint src tests",
     "format": "prettier --write 'src/**/*.ts' 'tests/**/*.ts'",
     "valhalla:up": "docker compose up -d",
     "valhalla:down": "docker compose down",
