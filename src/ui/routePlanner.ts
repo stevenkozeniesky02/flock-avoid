@@ -79,8 +79,28 @@ export class RoutePlanner {
 
   private async runPlan(): Promise<void> {
     if (!this.state.start || !this.state.end) return;
-    const cmp = await this.callbacks.onPlanRequested(this.state.start, this.state.end);
-    this.renderComparison(cmp);
+    this.clearError();
+    try {
+      const cmp = await this.callbacks.onPlanRequested(this.state.start, this.state.end);
+      this.renderComparison(cmp);
+    } catch (err) {
+      this.renderError(err instanceof Error ? err.message : String(err));
+    }
+  }
+
+  private renderError(message: string): void {
+    this.clearError();
+    const err = document.createElement('div');
+    err.dataset['errorBanner'] = 'true';
+    err.style.cssText =
+      'margin-top:12px;padding:10px;background:#fdecea;color:#611a15;border:1px solid #f5c6cb;' +
+      'border-radius:6px;font-size:13px';
+    err.textContent = `Routing failed: ${message}`;
+    this.container.appendChild(err);
+  }
+
+  private clearError(): void {
+    this.container.querySelectorAll('[data-error-banner]').forEach((el) => el.remove());
   }
 
   private renderComparison(cmp: RouteComparison): void {
