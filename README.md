@@ -1,3 +1,6 @@
+[![Build Camera Dataset](https://github.com/stevenkozeniesky02/flock-avoid/actions/workflows/build-camera-dataset.yml/badge.svg)](https://github.com/stevenkozeniesky02/flock-avoid/actions/workflows/build-camera-dataset.yml)
+[![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](./LICENSE)
+
 # Flock-Avoid — Phase 0a (Routing Validation Spike)
 
 Privacy-first map + routing app that helps users avoid mass-surveillance infrastructure.
