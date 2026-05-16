@@ -57,3 +57,18 @@ jobs:
             dist-dataset/cameras-us.json
             dist-dataset/cameras-us.json.meta.json
             dist-dataset/cameras-by-city/*.json
+
+      - name: Prune old releases (keep last 30)
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # List dataset-* releases sorted by date desc, skip the first 30, delete the rest.
+          gh release list --limit 1000 \
+            --json tagName,createdAt \
+            -q '.[] | select(.tagName | startswith("dataset-")) | .tagName' \
+            | tail -n +31 \
+            | while read tag; do
+                echo "Deleting old release: $tag"
+                gh release delete "$tag" --yes --cleanup-tag || true
+              done
