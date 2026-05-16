@@ -8,7 +8,8 @@ export const ALLOWED_HOSTS: readonly string[] = Object.freeze([
   'b.tile.openstreetmap.org',
   'c.tile.openstreetmap.org',
   'github.com',
-  'objects.githubusercontent.com',
+  'objects.githubusercontent.com',     // legacy GH release-asset CDN
+  'release-assets.githubusercontent.com', // current GH release-asset CDN (verified 2026-05-16)
 ]);
 
 export function isAllowedUrl(url: string): boolean {

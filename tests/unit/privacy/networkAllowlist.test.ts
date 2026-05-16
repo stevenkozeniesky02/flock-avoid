@@ -23,5 +23,6 @@ describe('networkAllowlist', () => {
   it('includes the GitHub release CDN hosts', () => {
     expect(ALLOWED_HOSTS).toContain('github.com');
     expect(ALLOWED_HOSTS).toContain('objects.githubusercontent.com');
+    expect(ALLOWED_HOSTS).toContain('release-assets.githubusercontent.com');
   });
 });
