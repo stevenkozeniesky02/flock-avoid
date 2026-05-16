@@ -27,14 +27,25 @@ To stop Valhalla: `npm run valhalla:down`.
 ## Tests
 
 ```bash
-npm test                  # unit + integration (integration tests require Valhalla up)
-npx playwright test       # privacy invariants + benchmark (also requires Valhalla + dev server)
+npm test                  # unit + integration (integration tests early-return + warn if Valhalla is down)
+npx playwright test       # privacy invariants + benchmark (skipped if Valhalla is down)
 ```
 
 To run only the fast unit tests:
 ```bash
 npx vitest run tests/unit
 ```
+
+**Behavior when Valhalla isn't reachable:** integration tests and Playwright tests detect the unhealthy server in `beforeAll` and skip / early-return with a clear console message. The unit tests still run, so CI stays green even if Valhalla is down. To get full coverage, get Valhalla healthy and re-run.
+
+## If `build-valhalla-tiles.sh` fails with `502`/`503` from Geofabrik
+
+This means [download.geofabrik.de](https://download.geofabrik.de) is having an outage. Wait a few minutes and re-run `./scripts/build-valhalla-tiles.sh` — most outages clear quickly. If it stays down, alternatives:
+
+- Edit `docker-compose.yml` and change `tile_urls` to a working mirror, e.g.
+  - `https://download.openstreetmap.fr/extracts/north-america/us/georgia.osm.pbf`
+  - or any other OSM PBF extract that covers Atlanta
+- After editing, run `npm run valhalla:down && ./scripts/build-valhalla-tiles.sh` again
 
 ## Scope of this spike
 
