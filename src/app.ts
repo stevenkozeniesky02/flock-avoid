@@ -100,7 +100,9 @@ export async function startApp(): Promise<void> {
   // Manifest fetch (best-effort) for the freshness banner
   let manifestGeneratedAt: string | null = null;
   if (MANIFEST_URL) {
-    if (!isAllowedUrl(MANIFEST_URL)) {
+    // Relative URLs are same-origin by construction (Vite proxy / reverse proxy)
+    const isRelative = MANIFEST_URL.startsWith('/') || MANIFEST_URL.startsWith('./');
+    if (!isRelative && !isAllowedUrl(MANIFEST_URL)) {
       throw new Error(`Manifest URL not in allowlist: ${MANIFEST_URL}`);
     }
     try {
