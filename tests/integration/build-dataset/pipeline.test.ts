@@ -4,6 +4,26 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { runPipeline } from '../../../scripts/build-dataset/run';
 
+describe('pipeline minOsmCount enforcement', () => {
+  it('rejects publication when OSM contribution is below minOsmCount', async () => {
+    const outDir = await mkdtemp(join(tmpdir(), 'flock-pipe-rej-'));
+    try {
+      await expect(
+        runPipeline({
+          outDir,
+          buildRunUrl: 'https://example/run/test',
+          deflockIndexFixturePath: 'scripts/build-dataset/fixtures/deflock-index.json',
+          deflockTileFixturePath: 'scripts/build-dataset/fixtures/deflock-tile-sample.json',
+          osmFixturePath: 'scripts/build-dataset/fixtures/osm-sample.json',
+          minOsmCount: 1000, // fixture only has 4 OSM records
+        }),
+      ).rejects.toThrow(/osm/i);
+    } finally {
+      await rm(outDir, { recursive: true, force: true });
+    }
+  }, 10_000);
+});
+
 describe('pipeline (e2e against fixtures)', () => {
   let outDir: string;
 

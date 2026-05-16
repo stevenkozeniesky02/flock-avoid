@@ -13,6 +13,10 @@ export interface RunOptions {
   readonly deflockTileFixturePath?: string;
   /** If set, read OSM from this fixture file instead of the network. */
   readonly osmFixturePath?: string;
+  /** Override OSM source minimum. Defaults to 0 when an osmFixturePath is set
+   *  (fixtures are small by design) and to validate.ts's production default
+   *  otherwise. */
+  readonly minOsmCount?: number;
 }
 
 export async function runPipeline(opts: RunOptions): Promise<void> {
@@ -29,7 +33,12 @@ export async function runPipeline(opts: RunOptions): Promise<void> {
   const deflockCams = normalizeDeflock(rawDeflock);
   const osmCams = normalizeOsm(rawOsm);
   const { merged, stats } = mergeWithStats(deflockCams, osmCams);
-  validateDataset(merged);
+  const minOsmCount = opts.minOsmCount ?? (opts.osmFixturePath ? 0 : undefined);
+  validateDataset(
+    merged,
+    { deflock: deflockCams.length, osm: osmCams.length },
+    minOsmCount != null ? { minOsmCount } : undefined,
+  );
   await publishDataset(opts.outDir, {
     cameras: merged,
     deflockCount: deflockCams.length,
@@ -46,6 +55,8 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   const deflockIndexFixturePath = process.env['DEFLOCK_INDEX_FIXTURE'];
   const deflockTileFixturePath = process.env['DEFLOCK_TILE_FIXTURE'];
   const osmFixturePath = process.env['OSM_FIXTURE'];
+  const minOsmCountRaw = process.env['MIN_OSM_COUNT'];
+  const minOsmCount = minOsmCountRaw != null ? Number(minOsmCountRaw) : undefined;
 
   const opts: RunOptions = {
     outDir,
@@ -53,6 +64,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     ...(deflockIndexFixturePath ? { deflockIndexFixturePath } : {}),
     ...(deflockTileFixturePath ? { deflockTileFixturePath } : {}),
     ...(osmFixturePath ? { osmFixturePath } : {}),
+    ...(minOsmCount != null && Number.isFinite(minOsmCount) ? { minOsmCount } : {}),
   };
 
   runPipeline(opts).then(
