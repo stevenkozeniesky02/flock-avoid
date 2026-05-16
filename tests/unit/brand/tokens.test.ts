@@ -33,5 +33,11 @@ describe('brand tokens', () => {
     for (const [key, value] of Object.entries(BRAND_TOKENS.radius)) {
       expect(cssRaw).toContain(`--radius-${key}: ${value}`);
     }
+    for (const [key, value] of Object.entries(BRAND_TOKENS.shadow)) {
+      expect(cssRaw).toContain(`--shadow-${key}: ${value}`);
+    }
+    for (const [key, value] of Object.entries(BRAND_TOKENS.fontSize)) {
+      expect(cssRaw).toContain(`--font-size-${key}: ${value}`);
+    }
   });
 });
