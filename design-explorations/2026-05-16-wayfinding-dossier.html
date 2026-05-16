@@ -1,0 +1,1275 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Flock-Avoid — Wayfinding v0.2</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    /* ============================== TOKENS */
+    :root {
+      --bg:           #ffffff;
+      --bg-alt:       #f7f7f5;
+      --surface:      #ffffff;
+      --surface-soft: rgba(255, 255, 255, 0.88);
+      --ink:          #0a0a0b;
+      --ink-2:        #27272a;
+      --muted:        #71717a;
+      --muted-2:      #a1a1aa;
+      --hairline:     rgba(10, 10, 11, 0.06);
+      --border:       rgba(10, 10, 11, 0.10);
+      --border-strong:rgba(10, 10, 11, 0.18);
+
+      --accent:       #2f54ff;
+      --accent-ink:   #ffffff;
+      --accent-soft:  #eef1ff;
+
+      --threat:       #dc2626;
+      --threat-soft:  #fef2f2;
+      --safe:         #059669;
+      --safe-soft:    #ecfdf5;
+      --warn:         #d97706;
+
+      --shadow-1:     0 1px 2px rgba(15, 15, 18, 0.04), 0 1px 1px rgba(15, 15, 18, 0.02);
+      --shadow-2:     0 1px 3px rgba(15, 15, 18, 0.06), 0 8px 24px rgba(15, 15, 18, 0.08);
+      --shadow-3:     0 2px 6px rgba(15, 15, 18, 0.08), 0 24px 48px rgba(15, 15, 18, 0.14);
+      --ring:         0 0 0 4px rgba(47, 84, 255, 0.18);
+
+      --font-sans:    "Geist", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      --font-mono:    "Geist Mono", "SF Mono", "JetBrains Mono", Menlo, monospace;
+
+      --t-xs:   11px;
+      --t-sm:   12.5px;
+      --t-base: 14px;
+      --t-md:   15px;
+      --t-lg:   18px;
+      --t-xl:   24px;
+      --t-2xl:  36px;
+
+      --s-1: 4px;  --s-2: 8px;  --s-3: 12px; --s-4: 16px;
+      --s-5: 20px; --s-6: 24px; --s-7: 32px; --s-8: 48px; --s-9: 64px;
+
+      --r-sm:   8px;
+      --r-md:   12px;
+      --r-lg:   16px;
+      --r-xl:   20px;
+      --r-pill: 999px;
+    }
+    [data-theme="dark"] {
+      --bg:           #0a0a0b;
+      --bg-alt:       #111114;
+      --surface:      #18181b;
+      --surface-soft: rgba(24, 24, 27, 0.85);
+      --ink:          #fafafa;
+      --ink-2:        #d4d4d8;
+      --muted:        #a1a1aa;
+      --muted-2:      #71717a;
+      --hairline:     rgba(255, 255, 255, 0.06);
+      --border:       rgba(255, 255, 255, 0.10);
+      --border-strong:rgba(255, 255, 255, 0.18);
+
+      --accent:       #6f8aff;
+      --accent-soft:  rgba(111, 138, 255, 0.16);
+
+      --threat:       #f87171;
+      --threat-soft:  rgba(248, 113, 113, 0.15);
+      --safe:         #34d399;
+      --safe-soft:    rgba(52, 211, 153, 0.15);
+
+      --shadow-1:     0 1px 2px rgba(0, 0, 0, 0.4);
+      --shadow-2:     0 1px 3px rgba(0, 0, 0, 0.4), 0 8px 24px rgba(0, 0, 0, 0.5);
+      --shadow-3:     0 2px 6px rgba(0, 0, 0, 0.4), 0 24px 48px rgba(0, 0, 0, 0.6);
+    }
+
+    /* ============================== RESET */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { background: var(--bg-alt); color: var(--ink); }
+    body {
+      font-family: var(--font-sans);
+      font-size: var(--t-base);
+      line-height: 1.5;
+      letter-spacing: -0.005em;
+      font-feature-settings: "cv11", "ss01";
+      transition: background 200ms ease, color 200ms ease;
+      -webkit-font-smoothing: antialiased;
+    }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    button, input { font-family: inherit; color: inherit; }
+    button { cursor: pointer; background: none; border: 0; padding: 0; }
+
+    /* ============================== PAGE */
+    .page { max-width: 1280px; margin: 0 auto; padding: var(--s-6); }
+
+    /* TOP META BAR (design study only — not part of the app) */
+    .meta-bar {
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      align-items: center;
+      gap: var(--s-5);
+      padding: var(--s-3) 0 var(--s-6);
+      border-bottom: 1px solid var(--border);
+      margin-bottom: var(--s-7);
+    }
+    .meta-bar .wordmark {
+      display: inline-flex; align-items: center; gap: var(--s-3);
+      font-family: var(--font-sans); font-weight: 600;
+      font-size: var(--t-md); letter-spacing: -0.02em;
+    }
+    .meta-bar .wordmark .glyph {
+      width: 22px; height: 22px;
+      background: var(--ink);
+      border-radius: 6px;
+      position: relative;
+    }
+    .meta-bar .wordmark .glyph::after {
+      content: ""; position: absolute; inset: 6px;
+      background: var(--bg);
+      border-radius: 3px;
+      box-shadow: 0 0 0 1px var(--ink) inset;
+    }
+    .meta-bar .crumbs {
+      font-family: var(--font-mono); font-size: var(--t-xs);
+      color: var(--muted); letter-spacing: 0.02em;
+    }
+    .meta-bar .theme-toggle {
+      display: inline-flex; align-items: center; gap: var(--s-2);
+      padding: var(--s-2) var(--s-3);
+      border: 1px solid var(--border);
+      border-radius: var(--r-pill);
+      font-size: var(--t-sm);
+      color: var(--ink-2);
+      background: var(--surface);
+      transition: border-color 120ms ease, background 120ms ease;
+    }
+    .meta-bar .theme-toggle:hover { border-color: var(--border-strong); }
+    .meta-bar .theme-toggle .dot {
+      width: 10px; height: 10px; border-radius: 50%;
+      background: var(--ink); border: 1px solid var(--border);
+    }
+
+    /* SECTION HEADERS */
+    .sec-head {
+      display: flex; align-items: baseline; justify-content: space-between;
+      gap: var(--s-5);
+      margin: var(--s-8) 0 var(--s-4);
+    }
+    .sec-head:first-of-type { margin-top: 0; }
+    .sec-head h2 {
+      font-size: var(--t-lg); font-weight: 600; letter-spacing: -0.015em;
+    }
+    .sec-head .sub {
+      font-family: var(--font-mono); font-size: var(--t-xs);
+      color: var(--muted); letter-spacing: 0.02em;
+    }
+
+    /* ============================== APP FRAME (the canvas every exhibit lives in) */
+    .frame {
+      position: relative;
+      border-radius: var(--r-lg);
+      overflow: hidden;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow-2);
+      aspect-ratio: 16 / 10;
+    }
+    .frame.tall { aspect-ratio: 9 / 16; max-width: 380px; margin: 0 auto; }
+
+    /* ============================== MAP MOCK (looks like a real map, not a grid) */
+    .map {
+      position: absolute; inset: 0;
+      background: #f1efeb;
+    }
+    [data-theme="dark"] .map { background: #1a1a1f; }
+    .map svg { width: 100%; height: 100%; display: block; }
+
+    /* Camera pins on the map */
+    .pin-cam {
+      position: absolute;
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--threat);
+      transform: translate(-50%, -50%);
+      box-shadow: 0 0 0 2px var(--bg);
+    }
+    .pin-cluster {
+      position: absolute;
+      transform: translate(-50%, -50%);
+      min-width: 28px; height: 28px;
+      padding: 0 8px;
+      border-radius: var(--r-pill);
+      background: var(--accent);
+      color: var(--accent-ink);
+      font-family: var(--font-mono);
+      font-size: var(--t-xs);
+      font-weight: 600;
+      display: inline-flex; align-items: center; justify-content: center;
+      letter-spacing: 0.02em;
+      box-shadow: 0 0 0 2.5px var(--bg), var(--shadow-2);
+    }
+    .pin-cluster.lg { min-width: 36px; height: 36px; font-size: var(--t-sm); }
+
+    /* Route markers (start/end) */
+    .pin-drop {
+      position: absolute;
+      transform: translate(-50%, -100%);
+      width: 28px; height: 36px;
+      filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.18));
+    }
+    .pin-drop svg { width: 100%; height: 100%; }
+
+    /* You are here marker — clean modern blue dot */
+    .you {
+      position: absolute;
+      transform: translate(-50%, -50%);
+      width: 18px; height: 18px;
+    }
+    .you .dot {
+      position: absolute; inset: 4px;
+      background: var(--accent);
+      border-radius: 50%;
+      box-shadow: 0 0 0 3px var(--bg), 0 2px 6px rgba(47, 84, 255, 0.4);
+    }
+    .you .ring {
+      position: absolute;
+      inset: -42px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(47, 84, 255, 0.18) 0%, rgba(47, 84, 255, 0) 70%);
+      animation: you-pulse 2.4s ease-out infinite;
+    }
+    @keyframes you-pulse {
+      0%   { transform: scale(0.5); opacity: 0.9; }
+      100% { transform: scale(1.4); opacity: 0; }
+    }
+
+    /* ============================== FLOATING CHROME (search, FABs, route card) */
+
+    /* Top search bar */
+    .search-bar {
+      position: absolute;
+      top: var(--s-4); left: 50%;
+      transform: translateX(-50%);
+      width: min(520px, calc(100% - 32px));
+      background: var(--surface);
+      border-radius: var(--r-pill);
+      box-shadow: var(--shadow-2);
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) auto auto auto;
+      align-items: center;
+      gap: var(--s-2);
+      padding: 6px var(--s-2) 6px var(--s-4);
+      border: 1px solid var(--border);
+    }
+    .search-bar .icon { color: var(--muted); display: inline-flex; }
+    .search-bar input {
+      background: transparent; border: 0; outline: none;
+      font-size: var(--t-md);
+      padding: 8px 0;
+      min-width: 0;
+      color: var(--ink);
+    }
+    .search-bar input::placeholder { color: var(--muted); }
+    .search-bar .sep {
+      width: 1px; height: 22px; background: var(--border);
+      margin: 0 var(--s-1);
+    }
+    .search-bar .iconbtn {
+      width: 36px; height: 36px;
+      border-radius: var(--r-pill);
+      display: inline-flex; align-items: center; justify-content: center;
+      color: var(--ink-2);
+      transition: background 120ms ease;
+    }
+    .search-bar .iconbtn:hover { background: var(--hairline); }
+    .search-bar .iconbtn.primary {
+      background: var(--accent); color: var(--accent-ink);
+    }
+    .search-bar .iconbtn.primary:hover { filter: brightness(1.08); }
+
+    /* Expanded planner card (replaces the search bar when actively planning) */
+    .planner-card {
+      position: absolute;
+      top: var(--s-4); left: 50%;
+      transform: translateX(-50%);
+      width: min(520px, calc(100% - 32px));
+      background: var(--surface);
+      border-radius: var(--r-lg);
+      box-shadow: var(--shadow-3);
+      border: 1px solid var(--border);
+      overflow: hidden;
+    }
+    .planner-card .head {
+      display: flex; align-items: center; gap: var(--s-3);
+      padding: var(--s-4) var(--s-4) var(--s-3);
+    }
+    .planner-card .head .back {
+      width: 32px; height: 32px;
+      border-radius: var(--r-pill);
+      display: inline-flex; align-items: center; justify-content: center;
+      color: var(--ink-2);
+    }
+    .planner-card .head .back:hover { background: var(--hairline); }
+    .planner-card .head .title {
+      font-weight: 600; font-size: var(--t-md); letter-spacing: -0.01em;
+    }
+    .planner-card .head .right {
+      margin-left: auto;
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 4px 10px;
+      border-radius: var(--r-pill);
+      background: var(--accent-soft);
+      color: var(--accent);
+      font-size: var(--t-xs);
+      font-weight: 600;
+      letter-spacing: -0.005em;
+    }
+    .planner-card .head .right .dot { width: 6px; height: 6px; background: var(--accent); border-radius: 50%; }
+
+    .planner-card .waypoints {
+      padding: 0 var(--s-4) var(--s-4);
+      position: relative;
+    }
+    .planner-card .rail {
+      position: absolute;
+      left: calc(var(--s-4) + 13px);
+      top: 22px; bottom: 38px;
+      width: 1.5px;
+      background: var(--border);
+    }
+    .planner-card .wp {
+      display: grid;
+      grid-template-columns: 28px 1fr auto;
+      align-items: center;
+      gap: var(--s-3);
+      padding: 4px 0;
+    }
+    .planner-card .wp + .wp { margin-top: 6px; }
+    .planner-card .wp .marker {
+      width: 12px; height: 12px;
+      border-radius: 50%;
+      margin-left: 8px;
+      position: relative;
+      z-index: 1;
+    }
+    .planner-card .wp.origin .marker { background: var(--accent); box-shadow: 0 0 0 3px var(--bg); }
+    .planner-card .wp.dest   .marker { background: var(--ink); box-shadow: 0 0 0 3px var(--bg); }
+    .planner-card .wp .field {
+      display: flex; align-items: center; gap: var(--s-2);
+      padding: 10px 12px;
+      background: var(--bg-alt);
+      border-radius: var(--r-md);
+      font-size: var(--t-md);
+    }
+    .planner-card .wp .field .val { color: var(--ink); font-weight: 500; }
+    .planner-card .wp .field .ph { color: var(--muted); }
+    .planner-card .wp .field.focused {
+      background: var(--surface);
+      box-shadow: 0 0 0 1px var(--accent), var(--ring);
+    }
+    .planner-card .wp .iconbtn {
+      width: 32px; height: 32px;
+      border-radius: var(--r-pill);
+      display: inline-flex; align-items: center; justify-content: center;
+      color: var(--ink-2);
+    }
+    .planner-card .wp .iconbtn:hover { background: var(--hairline); }
+    .planner-card .swap-row {
+      display: flex; justify-content: flex-end;
+      padding: 4px 0;
+    }
+    .planner-card .swap-row button {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 4px 10px;
+      border-radius: var(--r-pill);
+      font-size: var(--t-xs);
+      color: var(--muted);
+    }
+    .planner-card .swap-row button:hover { color: var(--ink); background: var(--hairline); }
+
+    /* Autocomplete (anchored below the planner) */
+    .autocomplete {
+      border-top: 1px solid var(--border);
+      max-height: 280px;
+      overflow: auto;
+    }
+    .autocomplete .row {
+      display: grid;
+      grid-template-columns: 32px 1fr auto;
+      align-items: center;
+      gap: var(--s-3);
+      padding: var(--s-3) var(--s-4);
+      cursor: pointer;
+      transition: background 100ms ease;
+    }
+    .autocomplete .row + .row { border-top: 1px solid var(--hairline); }
+    .autocomplete .row:hover, .autocomplete .row.selected { background: var(--bg-alt); }
+    .autocomplete .row .ico {
+      width: 32px; height: 32px;
+      border-radius: var(--r-md);
+      background: var(--bg-alt);
+      display: inline-flex; align-items: center; justify-content: center;
+      color: var(--muted);
+    }
+    .autocomplete .row.selected .ico { background: var(--accent-soft); color: var(--accent); }
+    .autocomplete .row .body { min-width: 0; }
+    .autocomplete .row .body .name {
+      font-size: var(--t-md); font-weight: 500;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .autocomplete .row .body .meta {
+      font-size: var(--t-xs); color: var(--muted);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .autocomplete .row .dist {
+      font-family: var(--font-mono); font-size: var(--t-xs);
+      color: var(--muted);
+    }
+
+    /* Floating action stack (right side) */
+    .fabs {
+      position: absolute;
+      right: var(--s-4);
+      top: 50%;
+      transform: translateY(-50%);
+      display: flex; flex-direction: column; gap: var(--s-2);
+    }
+    .fab {
+      width: 40px; height: 40px;
+      border-radius: var(--r-md);
+      background: var(--surface);
+      box-shadow: var(--shadow-2);
+      border: 1px solid var(--border);
+      color: var(--ink-2);
+      display: inline-flex; align-items: center; justify-content: center;
+      transition: background 120ms ease, color 120ms ease;
+    }
+    .fab:hover { background: var(--bg-alt); }
+    .fab.active { background: var(--accent); color: var(--accent-ink); border-color: transparent; }
+
+    /* Bottom route card (after route planned) */
+    .route-card {
+      position: absolute;
+      left: 50%; bottom: var(--s-4);
+      transform: translateX(-50%);
+      width: min(560px, calc(100% - 32px));
+      background: var(--surface);
+      border-radius: var(--r-lg);
+      box-shadow: var(--shadow-3);
+      border: 1px solid var(--border);
+      padding: var(--s-4);
+    }
+    .route-card .handle {
+      width: 32px; height: 4px; border-radius: var(--r-pill);
+      background: var(--border);
+      margin: -2px auto var(--s-3);
+    }
+    .route-card .head {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: var(--s-3);
+    }
+    .route-card .head .title {
+      font-size: var(--t-md); font-weight: 600; letter-spacing: -0.01em;
+    }
+    .route-card .head .profile {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 4px 10px;
+      border-radius: var(--r-pill);
+      background: var(--bg-alt);
+      font-size: var(--t-xs);
+      color: var(--ink-2);
+      font-weight: 500;
+    }
+    .route-card .head .profile .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--warn); }
+
+    .route-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: var(--s-3);
+      margin-bottom: var(--s-3);
+    }
+    .route-tile {
+      padding: var(--s-3) var(--s-4);
+      border-radius: var(--r-md);
+      border: 1px solid var(--border);
+      background: var(--surface);
+      cursor: pointer;
+      transition: border-color 120ms ease, background 120ms ease;
+    }
+    .route-tile:hover { border-color: var(--border-strong); }
+    .route-tile.selected {
+      border-color: var(--accent);
+      background: var(--accent-soft);
+    }
+    .route-tile .label {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-size: var(--t-xs); font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.04em;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+    .route-tile.shortest .label::before {
+      content: ""; width: 12px; height: 2px; background: var(--threat);
+      border-radius: 2px;
+    }
+    .route-tile.private .label::before {
+      content: ""; width: 12px; height: 2px; background: var(--safe);
+      border-radius: 2px;
+    }
+    .route-tile .num {
+      font-size: var(--t-xl); font-weight: 600;
+      letter-spacing: -0.02em;
+      font-feature-settings: "tnum";
+    }
+    .route-tile .meta {
+      font-size: var(--t-sm); color: var(--muted); margin-top: 2px;
+    }
+    .route-tile .meta strong { color: var(--ink-2); font-weight: 600; }
+
+    .route-card .footer {
+      display: flex; align-items: center; justify-content: space-between;
+      padding-top: var(--s-3);
+      border-top: 1px solid var(--hairline);
+      font-size: var(--t-sm);
+      color: var(--muted);
+    }
+    .route-card .footer .savings {
+      color: var(--safe);
+      font-weight: 500;
+      display: inline-flex; align-items: center; gap: 6px;
+    }
+    .route-card .footer .actions {
+      display: flex; gap: var(--s-2);
+    }
+    .route-card .footer .btn {
+      padding: 8px 14px;
+      border-radius: var(--r-pill);
+      font-size: var(--t-sm); font-weight: 500;
+      color: var(--ink);
+    }
+    .route-card .footer .btn:hover { background: var(--hairline); }
+    .route-card .footer .btn.primary {
+      background: var(--ink);
+      color: var(--bg);
+    }
+    .route-card .footer .btn.primary:hover { background: var(--ink-2); }
+
+    /* Dataset freshness chip — top-left, minimal */
+    .freshness-chip {
+      position: absolute;
+      bottom: var(--s-4); left: var(--s-4);
+      display: inline-flex; align-items: center; gap: var(--s-2);
+      padding: 6px 12px;
+      background: var(--surface-soft);
+      backdrop-filter: blur(8px);
+      border: 1px solid var(--border);
+      border-radius: var(--r-pill);
+      font-size: var(--t-xs);
+      color: var(--muted);
+      box-shadow: var(--shadow-1);
+    }
+    .freshness-chip .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--safe); }
+
+    /* Camera detail popup — clean card, anchored to a pin */
+    .cam-popup {
+      position: absolute;
+      bottom: 80px; left: var(--s-4);
+      width: 280px;
+      background: var(--surface);
+      border-radius: var(--r-lg);
+      box-shadow: var(--shadow-3);
+      border: 1px solid var(--border);
+      padding: var(--s-4);
+    }
+    .cam-popup .top {
+      display: flex; align-items: start; justify-content: space-between;
+      margin-bottom: var(--s-3);
+    }
+    .cam-popup .top .title {
+      font-size: var(--t-md); font-weight: 600; letter-spacing: -0.005em;
+    }
+    .cam-popup .top .title .sub {
+      font-size: var(--t-xs); font-weight: 400; color: var(--muted);
+      display: block; margin-top: 2px;
+    }
+    .cam-popup .top .close {
+      width: 28px; height: 28px;
+      border-radius: var(--r-pill);
+      display: inline-flex; align-items: center; justify-content: center;
+      color: var(--muted);
+    }
+    .cam-popup .top .close:hover { background: var(--hairline); color: var(--ink); }
+    .cam-popup dl {
+      display: grid; grid-template-columns: auto 1fr;
+      gap: 6px var(--s-4);
+      font-size: var(--t-sm);
+    }
+    .cam-popup dl dt { color: var(--muted); }
+    .cam-popup dl dd { color: var(--ink); text-align: right; font-feature-settings: "tnum"; }
+    .cam-popup .footnote {
+      margin-top: var(--s-3);
+      padding-top: var(--s-3);
+      border-top: 1px solid var(--hairline);
+      font-size: var(--t-xs);
+      color: var(--muted);
+    }
+
+    /* ============================== WELCOME MODAL */
+    .modal-stage {
+      position: relative;
+      border-radius: var(--r-lg);
+      overflow: hidden;
+      background: var(--bg-alt);
+      border: 1px solid var(--border);
+      padding: var(--s-8);
+      min-height: 640px;
+      display: grid;
+      place-items: center;
+    }
+    .modal-stage::before {
+      content: "";
+      position: absolute; inset: 0;
+      background:
+        radial-gradient(800px circle at 20% 10%, rgba(47, 84, 255, 0.06), transparent 60%),
+        radial-gradient(800px circle at 90% 90%, rgba(5, 150, 105, 0.05), transparent 60%);
+      pointer-events: none;
+    }
+    .welcome {
+      position: relative;
+      background: var(--surface);
+      border-radius: var(--r-xl);
+      box-shadow: var(--shadow-3);
+      border: 1px solid var(--border);
+      padding: var(--s-8);
+      max-width: 480px;
+      width: 100%;
+      text-align: left;
+    }
+    .welcome .glyph {
+      width: 44px; height: 44px;
+      background: var(--ink);
+      border-radius: var(--r-md);
+      margin-bottom: var(--s-5);
+      position: relative;
+    }
+    .welcome .glyph::after {
+      content: ""; position: absolute; inset: 11px;
+      background: var(--bg);
+      border-radius: 4px;
+      box-shadow: 0 0 0 1.5px var(--ink) inset;
+    }
+    .welcome h1 {
+      font-size: var(--t-2xl);
+      font-weight: 600;
+      letter-spacing: -0.025em;
+      line-height: 1.05;
+      margin-bottom: var(--s-3);
+    }
+    .welcome .lede {
+      font-size: var(--t-md);
+      color: var(--muted);
+      line-height: 1.55;
+      margin-bottom: var(--s-6);
+    }
+    .welcome .promises {
+      display: flex; flex-direction: column; gap: var(--s-3);
+      padding: var(--s-4);
+      background: var(--bg-alt);
+      border-radius: var(--r-md);
+      margin-bottom: var(--s-6);
+    }
+    .welcome .promise {
+      display: grid; grid-template-columns: 20px 1fr;
+      gap: var(--s-3);
+      align-items: start;
+      font-size: var(--t-sm);
+      color: var(--ink-2);
+      line-height: 1.5;
+    }
+    .welcome .promise .check {
+      width: 18px; height: 18px;
+      border-radius: 50%;
+      display: inline-flex; align-items: center; justify-content: center;
+      margin-top: 1px;
+    }
+    .welcome .promise.good .check { background: var(--safe-soft); color: var(--safe); }
+    .welcome .promise.note .check { background: var(--accent-soft); color: var(--accent); }
+    .welcome .promise code {
+      font-family: var(--font-mono);
+      font-size: 0.92em;
+      color: var(--ink-2);
+      background: var(--surface);
+      padding: 1px 6px;
+      border-radius: 4px;
+      border: 1px solid var(--border);
+    }
+    .welcome .cta {
+      display: flex; gap: var(--s-3); align-items: center;
+    }
+    .welcome .cta .primary {
+      flex: 1;
+      padding: 12px var(--s-5);
+      background: var(--ink); color: var(--bg);
+      border-radius: var(--r-pill);
+      font-size: var(--t-md); font-weight: 500;
+      letter-spacing: -0.005em;
+      transition: background 120ms ease;
+    }
+    .welcome .cta .primary:hover { background: var(--ink-2); }
+    .welcome .cta .secondary {
+      padding: 12px var(--s-4);
+      border-radius: var(--r-pill);
+      color: var(--muted);
+      font-size: var(--t-sm);
+    }
+    .welcome .cta .secondary:hover { color: var(--ink); }
+
+    /* ============================== TOKENS PANEL */
+    .tokens {
+      padding: var(--s-6);
+      background: var(--surface);
+      border-radius: var(--r-lg);
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow-1);
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: var(--s-6);
+    }
+    .tokens .group h3 {
+      font-size: var(--t-xs);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+      font-weight: 600;
+      margin-bottom: var(--s-3);
+    }
+    .tokens .swatches { display: flex; flex-direction: column; gap: var(--s-3); }
+    .swatch {
+      display: grid; grid-template-columns: 40px 1fr;
+      gap: var(--s-3); align-items: center;
+    }
+    .swatch .chip {
+      width: 40px; height: 40px;
+      border-radius: var(--r-md);
+      border: 1px solid var(--border);
+    }
+    .swatch .meta .name { font-size: var(--t-sm); font-weight: 500; }
+    .swatch .meta .hex { font-family: var(--font-mono); font-size: var(--t-xs); color: var(--muted); }
+
+    .type-specs { display: flex; flex-direction: column; gap: var(--s-4); }
+    .type-specs .specimen .name {
+      font-size: var(--t-xs); color: var(--muted); margin-bottom: 4px;
+      font-family: var(--font-mono); letter-spacing: 0.02em;
+    }
+    .type-specs .specimen .sample.h { font-size: 28px; font-weight: 600; letter-spacing: -0.025em; }
+    .type-specs .specimen .sample.b { font-size: var(--t-md); }
+    .type-specs .specimen .sample.s { font-size: var(--t-sm); color: var(--muted); }
+    .type-specs .specimen .sample.m {
+      font-family: var(--font-mono); font-size: var(--t-sm); font-feature-settings: "tnum";
+    }
+
+    .scale-list { display: flex; flex-direction: column; gap: 6px; }
+    .scale-list .row {
+      display: grid; grid-template-columns: 50px 1fr auto;
+      gap: var(--s-3); align-items: center;
+      font-family: var(--font-mono); font-size: var(--t-xs); color: var(--muted);
+    }
+    .scale-list .row .bar { height: 6px; background: var(--ink); border-radius: 2px; }
+    .scale-list .row .px { color: var(--ink-2); }
+
+    .principles { display: flex; flex-direction: column; gap: var(--s-3); }
+    .principles .item .lab {
+      font-size: var(--t-xs); color: var(--muted);
+      font-family: var(--font-mono);
+      letter-spacing: 0.02em;
+      margin-bottom: 2px;
+    }
+    .principles .item .v { font-size: var(--t-sm); line-height: 1.5; }
+
+    /* ============================== RESPONSIVE */
+    @media (max-width: 800px) {
+      .tokens { grid-template-columns: 1fr 1fr; }
+      .page { padding: var(--s-4); }
+      .frame { aspect-ratio: 4 / 5; }
+    }
+    @media (max-width: 480px) {
+      .tokens { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+
+    <!-- META BAR -->
+    <header class="meta-bar">
+      <div class="wordmark">
+        <span class="glyph"></span>
+        Flock-Avoid
+      </div>
+      <div class="crumbs">design study · wayfinding · v0.2 · modern</div>
+      <button class="theme-toggle" id="theme">
+        <span class="dot"></span>
+        <span id="theme-label">Light</span>
+      </button>
+    </header>
+
+    <!-- ========== EXHIBIT 1: DEFAULT STATE ========== -->
+    <div class="sec-head">
+      <h2>Default — map first, chrome out of the way</h2>
+      <span class="sub">01 · idle · no route planned</span>
+    </div>
+    <div class="frame" id="ex1">
+      <div class="map">
+        <!-- Realistic map mock SVG -->
+        <svg viewBox="0 0 1280 800" preserveAspectRatio="xMidYMid slice">
+          <defs>
+            <pattern id="grid-fine" width="80" height="80" patternUnits="userSpaceOnUse">
+              <path d="M 80 0 L 0 0 0 80" fill="none" stroke="rgba(10, 10, 11, 0.025)" stroke-width="1"/>
+            </pattern>
+          </defs>
+          <!-- base -->
+          <rect width="100%" height="100%" fill="url(#grid-fine)"/>
+          <!-- river -->
+          <path d="M -40 540 C 200 480, 320 600, 540 540 S 880 460, 1100 540 S 1280 620, 1320 580 L 1320 820 L -40 820 Z"
+            fill="#cfe1f0" opacity="0.85"/>
+          <!-- park polygons -->
+          <path d="M 80 80 L 320 80 L 380 220 L 280 320 L 100 280 Z" fill="#dbe7d0" opacity="0.85"/>
+          <path d="M 880 120 L 1140 100 L 1180 280 L 940 320 L 880 240 Z" fill="#dbe7d0" opacity="0.7"/>
+          <!-- major roads (warm white) -->
+          <g stroke="#f9f6f0" stroke-width="14" fill="none" stroke-linecap="round">
+            <path d="M -20 240 L 480 220 L 720 280 L 1300 260"/>
+            <path d="M -20 400 L 460 420 L 760 480 L 1300 460"/>
+            <path d="M 280 -20 L 320 320 L 380 720 L 360 820"/>
+            <path d="M 820 -20 L 860 320 L 920 720 L 940 820"/>
+          </g>
+          <!-- major road outlines -->
+          <g stroke="rgba(10, 10, 11, 0.08)" stroke-width="16" fill="none" stroke-linecap="round" opacity="0.4">
+            <path d="M -20 240 L 480 220 L 720 280 L 1300 260" stroke="none"/>
+          </g>
+          <!-- street grid (lighter) -->
+          <g stroke="#ffffff" stroke-width="5" fill="none" stroke-linecap="round" opacity="0.95">
+            <path d="M -20 320 L 1300 340"/>
+            <path d="M -20 480 L 1300 500"/>
+            <path d="M -20 600 L 1300 620"/>
+            <path d="M -20 700 L 1300 720"/>
+            <path d="M 140 -20 L 160 820"/>
+            <path d="M 480 -20 L 500 820"/>
+            <path d="M 640 -20 L 660 820"/>
+            <path d="M 1000 -20 L 1020 820"/>
+            <path d="M 1160 -20 L 1180 820"/>
+          </g>
+          <!-- minor street ticks -->
+          <g stroke="rgba(255, 255, 255, 0.7)" stroke-width="2" fill="none">
+            <path d="M -20 180 L 1300 200"/>
+            <path d="M -20 380 L 1300 380"/>
+            <path d="M -20 540 L 1300 560"/>
+            <path d="M 220 -20 L 240 820"/>
+            <path d="M 400 -20 L 420 820"/>
+            <path d="M 560 -20 L 580 820"/>
+            <path d="M 740 -20 L 760 820"/>
+            <path d="M 940 -20 L 960 820"/>
+            <path d="M 1080 -20 L 1100 820"/>
+          </g>
+          <!-- block fills (subtle building hints) -->
+          <g fill="rgba(10, 10, 11, 0.025)">
+            <rect x="180" y="340" width="40" height="40"/>
+            <rect x="260" y="360" width="60" height="30"/>
+            <rect x="540" y="360" width="50" height="40"/>
+            <rect x="700" y="540" width="30" height="40"/>
+            <rect x="780" y="540" width="60" height="40"/>
+            <rect x="1060" y="540" width="40" height="60"/>
+            <rect x="180" y="540" width="40" height="40"/>
+            <rect x="260" y="540" width="40" height="40"/>
+          </g>
+          <!-- street labels (sparse) -->
+          <g fill="rgba(10, 10, 11, 0.4)" font-family="Geist" font-size="11" letter-spacing="0.5">
+            <text x="540" y="218" text-anchor="middle">PONCE DE LEON AVE</text>
+            <text x="660" y="216" font-size="9">·</text>
+            <text x="240" y="430" font-size="10">N HIGHLAND AVE</text>
+            <text x="800" y="460" font-size="10">FREEDOM PKWY</text>
+            <text x="1100" y="520" font-size="10" opacity="0.7">CHATTAHOOCHEE</text>
+            <text x="180" y="110" font-size="10" fill="rgba(60, 96, 60, 0.7)">PIEDMONT PARK</text>
+          </g>
+        </svg>
+      </div>
+
+      <!-- camera pins scattered -->
+      <div class="pin-cam" style="left: 22%; top: 28%"></div>
+      <div class="pin-cam" style="left: 30%; top: 42%"></div>
+      <div class="pin-cam" style="left: 48%; top: 30%"></div>
+      <div class="pin-cam" style="left: 56%; top: 56%"></div>
+      <div class="pin-cam" style="left: 64%; top: 38%"></div>
+      <div class="pin-cam" style="left: 72%; top: 64%"></div>
+      <div class="pin-cam" style="left: 84%; top: 30%"></div>
+      <div class="pin-cam" style="left: 80%; top: 78%"></div>
+      <div class="pin-cluster" style="left: 38%; top: 18%">12</div>
+      <div class="pin-cluster lg" style="left: 86%; top: 50%">31</div>
+
+      <!-- you are here -->
+      <div class="you" style="left: 44%; top: 60%">
+        <div class="ring"></div>
+        <div class="dot"></div>
+      </div>
+
+      <!-- TOP: search bar -->
+      <div class="search-bar">
+        <span class="icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3-3"/></svg>
+        </span>
+        <input type="text" placeholder="Search a place, address, or coordinate">
+        <span class="sep"></span>
+        <button class="iconbtn" title="Use my location">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M22 12h-3M5 12H2"/></svg>
+        </button>
+        <button class="iconbtn primary" title="Plan route">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h13M11 6l6 6-6 6"/></svg>
+        </button>
+      </div>
+
+      <!-- RIGHT: floating actions -->
+      <div class="fabs">
+        <button class="fab active" title="Sensor pins on">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M2 12h3M19 12h3M12 2v3M12 19v3"/></svg>
+        </button>
+        <button class="fab" title="Show all cones">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 4 14h16L12 2z"/></svg>
+        </button>
+        <button class="fab" title="Recenter on me">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/></svg>
+        </button>
+      </div>
+
+      <!-- BOTTOM-LEFT: freshness -->
+      <div class="freshness-chip">
+        <span class="dot"></span>
+        <span>92,292 sensors · updated 41 min ago</span>
+      </div>
+    </div>
+
+    <!-- ========== EXHIBIT 2: SEARCHING STATE ========== -->
+    <div class="sec-head">
+      <h2>Searching — planner expanded, autocomplete live</h2>
+      <span class="sub">02 · user is typing into Start</span>
+    </div>
+    <div class="frame" id="ex2">
+      <div class="map">
+        <!-- reuse base map SVG -->
+        <svg viewBox="0 0 1280 800" preserveAspectRatio="xMidYMid slice">
+          <defs>
+            <pattern id="grid-fine-2" width="80" height="80" patternUnits="userSpaceOnUse">
+              <path d="M 80 0 L 0 0 0 80" fill="none" stroke="rgba(10, 10, 11, 0.025)" stroke-width="1"/>
+            </pattern>
+          </defs>
+          <rect width="100%" height="100%" fill="url(#grid-fine-2)"/>
+          <path d="M -40 540 C 200 480, 320 600, 540 540 S 880 460, 1100 540 S 1280 620, 1320 580 L 1320 820 L -40 820 Z" fill="#cfe1f0" opacity="0.85"/>
+          <path d="M 80 80 L 320 80 L 380 220 L 280 320 L 100 280 Z" fill="#dbe7d0" opacity="0.85"/>
+          <path d="M 880 120 L 1140 100 L 1180 280 L 940 320 L 880 240 Z" fill="#dbe7d0" opacity="0.7"/>
+          <g stroke="#f9f6f0" stroke-width="14" fill="none" stroke-linecap="round">
+            <path d="M -20 240 L 480 220 L 720 280 L 1300 260"/>
+            <path d="M -20 400 L 460 420 L 760 480 L 1300 460"/>
+            <path d="M 280 -20 L 320 320 L 380 720 L 360 820"/>
+            <path d="M 820 -20 L 860 320 L 920 720 L 940 820"/>
+          </g>
+          <g stroke="#ffffff" stroke-width="5" fill="none" stroke-linecap="round" opacity="0.95">
+            <path d="M -20 320 L 1300 340"/>
+            <path d="M -20 480 L 1300 500"/>
+            <path d="M -20 600 L 1300 620"/>
+            <path d="M -20 700 L 1300 720"/>
+            <path d="M 140 -20 L 160 820"/>
+            <path d="M 480 -20 L 500 820"/>
+            <path d="M 640 -20 L 660 820"/>
+            <path d="M 1000 -20 L 1020 820"/>
+            <path d="M 1160 -20 L 1180 820"/>
+          </g>
+        </svg>
+      </div>
+
+      <!-- camera pins (less prominent during searching) -->
+      <div class="pin-cam" style="left: 22%; top: 28%; opacity: 0.5"></div>
+      <div class="pin-cam" style="left: 48%; top: 30%; opacity: 0.5"></div>
+      <div class="pin-cam" style="left: 64%; top: 38%; opacity: 0.5"></div>
+      <div class="pin-cam" style="left: 72%; top: 64%; opacity: 0.5"></div>
+      <div class="pin-cam" style="left: 84%; top: 30%; opacity: 0.5"></div>
+      <div class="pin-cluster" style="left: 86%; top: 50%; opacity: 0.7">31</div>
+      <div class="you" style="left: 44%; top: 60%">
+        <div class="ring"></div>
+        <div class="dot"></div>
+      </div>
+
+      <!-- PLANNER CARD (replaces search bar) -->
+      <div class="planner-card">
+        <div class="head">
+          <button class="back" title="Back">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+          </button>
+          <span class="title">Plan a route</span>
+          <span class="right"><span class="dot"></span>Vulnerable</span>
+        </div>
+        <div class="waypoints">
+          <div class="rail"></div>
+          <div class="wp origin">
+            <span class="marker"></span>
+            <div class="field focused">
+              <span class="val">krog</span>
+            </div>
+            <button class="iconbtn" title="Use my location">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M22 12h-3M5 12H2"/></svg>
+            </button>
+          </div>
+          <div class="swap-row">
+            <button>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7h13M7 7l3-3M7 7l3 3M17 17H4M17 17l-3-3M17 17l-3 3"/></svg>
+              <span>Swap</span>
+            </button>
+          </div>
+          <div class="wp dest">
+            <span class="marker"></span>
+            <div class="field">
+              <span class="ph">Where to?</span>
+            </div>
+          </div>
+        </div>
+        <div class="autocomplete">
+          <div class="row selected">
+            <span class="ico"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg></span>
+            <div class="body">
+              <div class="name">Krog Street Market</div>
+              <div class="meta">99 Krog St NE, Inman Park, Atlanta GA</div>
+            </div>
+            <span class="dist">1.2 mi</span>
+          </div>
+          <div class="row">
+            <span class="ico"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h18M3 6h18M3 18h18"/></svg></span>
+            <div class="body">
+              <div class="name">Krog Street Tunnel</div>
+              <div class="meta">Krog Street, Cabbagetown, Atlanta GA</div>
+            </div>
+            <span class="dist">1.5 mi</span>
+          </div>
+          <div class="row">
+            <span class="ico"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V12h6v10"/></svg></span>
+            <div class="body">
+              <div class="name">11 Krog St NE</div>
+              <div class="meta">Inman Park, Atlanta GA 30307</div>
+            </div>
+            <span class="dist">1.3 mi</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========== EXHIBIT 3: ROUTE PLANNED ========== -->
+    <div class="sec-head">
+      <h2>Route planned — two routes drawn, summary card docked</h2>
+      <span class="sub">03 · shortest vs private · choose</span>
+    </div>
+    <div class="frame" id="ex3">
+      <div class="map">
+        <svg viewBox="0 0 1280 800" preserveAspectRatio="xMidYMid slice">
+          <defs>
+            <pattern id="grid-fine-3" width="80" height="80" patternUnits="userSpaceOnUse">
+              <path d="M 80 0 L 0 0 0 80" fill="none" stroke="rgba(10, 10, 11, 0.025)" stroke-width="1"/>
+            </pattern>
+          </defs>
+          <rect width="100%" height="100%" fill="url(#grid-fine-3)"/>
+          <path d="M -40 540 C 200 480, 320 600, 540 540 S 880 460, 1100 540 S 1280 620, 1320 580 L 1320 820 L -40 820 Z" fill="#cfe1f0" opacity="0.85"/>
+          <path d="M 80 80 L 320 80 L 380 220 L 280 320 L 100 280 Z" fill="#dbe7d0" opacity="0.85"/>
+          <g stroke="#f9f6f0" stroke-width="14" fill="none" stroke-linecap="round">
+            <path d="M -20 240 L 480 220 L 720 280 L 1300 260"/>
+            <path d="M -20 400 L 460 420 L 760 480 L 1300 460"/>
+            <path d="M 280 -20 L 320 320 L 380 720 L 360 820"/>
+            <path d="M 820 -20 L 860 320 L 920 720 L 940 820"/>
+          </g>
+          <g stroke="#ffffff" stroke-width="5" fill="none" stroke-linecap="round" opacity="0.95">
+            <path d="M -20 320 L 1300 340"/>
+            <path d="M -20 480 L 1300 500"/>
+            <path d="M -20 600 L 1300 620"/>
+            <path d="M -20 700 L 1300 720"/>
+            <path d="M 140 -20 L 160 820"/>
+            <path d="M 480 -20 L 500 820"/>
+            <path d="M 640 -20 L 660 820"/>
+            <path d="M 1000 -20 L 1020 820"/>
+          </g>
+
+          <!-- shortest route (red, semi-translucent because not selected) -->
+          <path d="M 200 200 L 320 230 L 480 220 L 660 270 L 720 360 L 860 420 L 1020 430"
+            stroke="#dc2626" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"
+            fill="none" stroke-dasharray="2 8" opacity="0.55"/>
+          <!-- private route (green, selected) -->
+          <path d="M 200 200 L 280 280 L 320 380 L 460 440 L 580 500 L 760 540 L 880 500 L 1020 430"
+            stroke="#059669" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+        </svg>
+      </div>
+
+      <!-- camera pins (only along the routes) -->
+      <div class="pin-cam" style="left: 38%; top: 27%"></div>
+      <div class="pin-cam" style="left: 60%; top: 36%"></div>
+      <div class="pin-cam" style="left: 70%; top: 51%"></div>
+      <div class="pin-cam" style="left: 45%; top: 55%"></div>
+
+      <!-- start + end pins -->
+      <div class="pin-drop" style="left: 16%; top: 25%">
+        <svg viewBox="0 0 28 36"><path d="M 14 0 C 6 0 0 6 0 14 C 0 22 14 36 14 36 C 14 36 28 22 28 14 C 28 6 22 0 14 0 Z" fill="#2f54ff"/><circle cx="14" cy="14" r="6" fill="white"/></svg>
+      </div>
+      <div class="pin-drop" style="left: 79%; top: 54%">
+        <svg viewBox="0 0 28 36"><path d="M 14 0 C 6 0 0 6 0 14 C 0 22 14 36 14 36 C 14 36 28 22 28 14 C 28 6 22 0 14 0 Z" fill="#0a0a0b"/><circle cx="14" cy="14" r="6" fill="white"/></svg>
+      </div>
+
+      <div class="freshness-chip">
+        <span class="dot"></span>
+        <span>92,292 sensors · 4 along your route</span>
+      </div>
+
+      <!-- Camera popup demo on one sensor -->
+      <div class="cam-popup">
+        <div class="top">
+          <div class="title">Flock ALPR
+            <span class="sub">Sensor #ATL-04183 · ATL PD</span>
+          </div>
+          <button class="close">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+          </button>
+        </div>
+        <dl>
+          <dt>Bearing</dt><dd>062° NE</dd>
+          <dt>Effective range</dt><dd>35 m · 78°</dd>
+          <dt>Sources</dt><dd>DeFlock, OSM</dd>
+          <dt>Last verified</dt><dd>May 12, 2026</dd>
+        </dl>
+        <div class="footnote">Distance is a model estimate, not a measurement.</div>
+      </div>
+
+      <!-- Bottom route card -->
+      <div class="route-card">
+        <div class="handle"></div>
+        <div class="head">
+          <span class="title">Krog Street Market → Ponce City Market</span>
+          <span class="profile"><span class="dot"></span>Vulnerable</span>
+        </div>
+        <div class="route-grid">
+          <div class="route-tile shortest">
+            <div class="label">Shortest</div>
+            <div class="num">3.2 mi</div>
+            <div class="meta"><strong>11 sensors</strong> · exposure 47</div>
+          </div>
+          <div class="route-tile private selected">
+            <div class="label">Private</div>
+            <div class="num">3.8 mi</div>
+            <div class="meta"><strong>2 sensors</strong> · exposure 8</div>
+          </div>
+        </div>
+        <div class="footer">
+          <span class="savings">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s-8-4.5-8-12a8 8 0 0 1 16 0c0 7.5-8 12-8 12z"/><path d="M9 12l2 2 4-4"/></svg>
+            83% less visible
+          </span>
+          <div class="actions">
+            <button class="btn">Details</button>
+            <button class="btn primary">Start →</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========== EXHIBIT 4: WELCOME MODAL ========== -->
+    <div class="sec-head">
+      <h2>Welcome — first-run, warm and direct</h2>
+      <span class="sub">04 · privacy stated as promises, not legalese</span>
+    </div>
+    <div class="modal-stage">
+      <div class="welcome">
+        <div class="glyph"></div>
+        <h1>Find a route the cameras don't see.</h1>
+        <p class="lede">Flock-Avoid plans driving routes around the surveillance cameras we know about. The map is yours. Your trips are yours.</p>
+        <div class="promises">
+          <div class="promise good">
+            <span class="check">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
+            </span>
+            <span><strong>Routing runs on your device.</strong> Your trips never leave the browser.</span>
+          </div>
+          <div class="promise good">
+            <span class="check">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
+            </span>
+            <span><strong>No accounts. No analytics. No trackers.</strong> The code is open source.</span>
+          </div>
+          <div class="promise note">
+            <span class="check">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
+            </span>
+            <span><strong>Search uses <code>photon.komoot.io</code></strong> — only what you type goes there, never your route.</span>
+          </div>
+        </div>
+        <div class="cta">
+          <button class="primary">Get started</button>
+          <a href="#" class="secondary">Read the docs</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========== APPENDIX: TOKENS ========== -->
+    <div class="sec-head">
+      <h2>System</h2>
+      <span class="sub">tokens · type · scale · principles</span>
+    </div>
+    <section class="tokens">
+      <div class="group">
+        <h3>Color</h3>
+        <div class="swatches">
+          <div class="swatch"><div class="chip" style="background: #0a0a0b"></div><div class="meta"><div class="name">Ink</div><div class="hex">#0A0A0B</div></div></div>
+          <div class="swatch"><div class="chip" style="background: #f7f7f5"></div><div class="meta"><div class="name">Surface</div><div class="hex">#F7F7F5</div></div></div>
+          <div class="swatch"><div class="chip" style="background: #2f54ff"></div><div class="meta"><div class="name">Accent</div><div class="hex">#2F54FF · brand</div></div></div>
+          <div class="swatch"><div class="chip" style="background: #dc2626"></div><div class="meta"><div class="name">Threat</div><div class="hex">#DC2626 · sensors</div></div></div>
+          <div class="swatch"><div class="chip" style="background: #059669"></div><div class="meta"><div class="name">Safe</div><div class="hex">#059669 · private route</div></div></div>
+        </div>
+      </div>
+      <div class="group">
+        <h3>Type</h3>
+        <div class="type-specs">
+          <div class="specimen"><div class="name">Display · Geist 600</div><div class="sample h">Find a route the cameras don't see.</div></div>
+          <div class="specimen"><div class="name">Body · Geist 400</div><div class="sample b">Routing runs on your device. Your trips never leave the browser.</div></div>
+          <div class="specimen"><div class="name">Small · Geist 400</div><div class="sample s">Sensor #ATL-04183 · Atlanta PD</div></div>
+          <div class="specimen"><div class="name">Mono · Geist Mono 400 · tabular</div><div class="sample m">33.7501, −84.3890 · ± 12m</div></div>
+        </div>
+      </div>
+      <div class="group">
+        <h3>Scale</h3>
+        <div class="scale-list">
+          <div class="row"><span>4</span><span class="bar" style="width: 4px"></span><span class="px">space</span></div>
+          <div class="row"><span>8</span><span class="bar" style="width: 8px"></span><span class="px">space</span></div>
+          <div class="row"><span>12</span><span class="bar" style="width: 12px"></span><span class="px">space · radius</span></div>
+          <div class="row"><span>16</span><span class="bar" style="width: 16px"></span><span class="px">space · radius</span></div>
+          <div class="row"><span>20</span><span class="bar" style="width: 20px"></span><span class="px">radius</span></div>
+          <div class="row"><span>24</span><span class="bar" style="width: 24px"></span><span class="px">space</span></div>
+          <div class="row"><span>32</span><span class="bar" style="width: 32px"></span><span class="px">space</span></div>
+          <div class="row"><span>48</span><span class="bar" style="width: 48px"></span><span class="px">space</span></div>
+        </div>
+      </div>
+      <div class="group">
+        <h3>Principles</h3>
+        <div class="principles">
+          <div class="item"><div class="lab">Hierarchy</div><div class="v">Map is the canvas. Chrome floats above it, never replaces it.</div></div>
+          <div class="item"><div class="lab">Density</div><div class="v">Compact at rest, expansive when actively used.</div></div>
+          <div class="item"><div class="lab">Surfaces</div><div class="v">Soft shadows + 1px hairline border. Translucency only for ambient overlays.</div></div>
+          <div class="item"><div class="lab">Motion</div><div class="v">160–220 ms · ease-out for entrances, ease-in for exits. One gentle pulse for liveness.</div></div>
+          <div class="item"><div class="lab">Tone</div><div class="v">Plain language. Strong nouns. No legalese, no slogans.</div></div>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <script>
+    const btn = document.getElementById('theme');
+    const lbl = document.getElementById('theme-label');
+    btn.addEventListener('click', () => {
+      const cur = document.documentElement.dataset.theme;
+      const next = cur === 'dark' ? 'light' : 'dark';
+      document.documentElement.dataset.theme = next;
+      lbl.textContent = next === 'dark' ? 'Dark' : 'Light';
+    });
+  </script>
+</body>
+</html>
