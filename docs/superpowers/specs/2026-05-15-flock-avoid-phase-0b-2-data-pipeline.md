@@ -289,7 +289,7 @@ Required prerequisites (handled in plan Task 0):
 - Push current `master` (Phase 0a + 0b-1 work)
 - Configure repo secrets if any (none required for v1 — DeFlock + OSM are public APIs)
 - Configure branch protection on `main` (require status checks, no direct push)
-- Add LICENSE file — recommend **AGPL-3.0** to align with civil-liberties + open-source posture and prevent commercial enclosure. Open question for review.
+- Add LICENSE file — **AGPL-3.0** (code). Aligns with civil-liberties + open-source posture and prevents commercial enclosure. Note: source data inherits its upstream licenses (DeFlock + OSM are both ODbL); document this separately in `LICENSE-DATA.md`.
 - Add basic CONTRIBUTING.md pointing to design docs
 
 ## 12. Operational Concerns
@@ -306,10 +306,12 @@ Required prerequisites (handled in plan Task 0):
 ## 13. Open Questions / Deferred Decisions
 
 - Exact DeFlock API endpoint shape — pipeline implementation should probe at write-time and may need adjustment after first real fetch
-- License choice (AGPL-3.0 proposed; user to confirm in spec review)
 - Whether to ship per-state subsets in addition to per-city (probably not for v1 — file count grows quickly)
 - Whether to add a community-edits log file (Phase 1 / submission feature concern)
-- Final notification mechanism for Action failures (email, Slack, Discord — user choice based on what they actively monitor)
+
+**Decisions locked during review:**
+- **License: AGPL-3.0** for code; data inherits ODbL from DeFlock + OSM (documented in `LICENSE-DATA.md`)
+- **Failure notifications:** GitHub Actions' built-in email to repo owner + status badge in README. Swap to Slack/Discord/uptime-page later if team grows or public status is needed.
 
 ## 14. Success Criteria
 
