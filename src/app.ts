@@ -8,6 +8,7 @@ import { ValhallaClient } from './routing/valhallaClient';
 import { Router } from './routing/router';
 import { renderDatasetFreshness } from './ui/datasetFreshness';
 import { parseDatasetManifest } from './data/datasetManifest';
+import { isAllowedUrl } from './privacy/networkAllowlist';
 import type { GeoPoint } from './domain/route';
 import type { ThreatProfile } from './domain/threatProfile';
 
@@ -34,6 +35,9 @@ export async function startApp(): Promise<void> {
 
   let manifestGeneratedAt: string | null = null;
   if (MANIFEST_URL) {
+    if (!isAllowedUrl(MANIFEST_URL)) {
+      throw new Error(`Manifest URL not in allowlist: ${MANIFEST_URL}`);
+    }
     try {
       const resp = await fetch(MANIFEST_URL);
       if (resp.ok) {
