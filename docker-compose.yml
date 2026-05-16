@@ -1,0 +1,17 @@
+services:
+  valhalla:
+    image: ghcr.io/gis-ops/docker-valhalla/valhalla:latest
+    container_name: flock-avoid-valhalla
+    ports:
+      - "127.0.0.1:8002:8002"
+    volumes:
+      - ./valhalla_tiles:/custom_files
+    environment:
+      - tile_urls=https://download.geofabrik.de/north-america/us/georgia-latest.osm.pbf
+      - server_threads=2
+      - serve_tiles=True
+      - build_admins=True
+      - build_time_zones=False
+      - force_rebuild=False
+      - use_tiles_ignore_pbf=False
+    restart: unless-stopped
