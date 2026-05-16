@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll } from 'vitest';
+import { describe, it, expect, beforeAll, vi } from 'vitest';
 import { CameraStore } from '../../../src/data/cameraStore';
 import type { Camera } from '../../../src/domain/camera';
 
@@ -39,5 +39,42 @@ describe('CameraStore', () => {
     );
     expect(d).toBeGreaterThan(250);
     expect(d).toBeLessThan(310);
+  });
+});
+
+describe('CameraStore.loadFromUrl — allowlist + schema validation', () => {
+  it('loadFromUrl rejects URLs not in the allowlist', async () => {
+    await expect(CameraStore.loadFromUrl('https://evil.example.com/cameras.json'))
+      .rejects.toThrow(/not in allowlist/);
+  });
+
+  it('loadFromUrl accepts relative URLs (same-origin)', async () => {
+    // The allowlist check is skipped for relative URLs; fetch will fail with a
+    // network/protocol error, not an allowlist error.
+    await expect(CameraStore.loadFromUrl('/data/some-file.json'))
+      .rejects.not.toThrow(/not in allowlist/);
+  });
+
+  it('loadFromUrl throws when cameras array is missing', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify({}), { status: 200 }),
+    );
+    await expect(CameraStore.loadFromUrl('/data/test.json'))
+      .rejects.toThrow(/missing top-level/);
+    fetchSpy.mockRestore();
+  });
+
+  it('loadFromUrl throws when a camera has an unknown type', async () => {
+    const bad = {
+      cameras: [
+        { id: 'x', type: 'unknown_type', lat: 0, lon: 0, confidence: 1, source: 'seed' },
+      ],
+    };
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify(bad), { status: 200 }),
+    );
+    await expect(CameraStore.loadFromUrl('/data/test.json'))
+      .rejects.toThrow(/invalid type/);
+    fetchSpy.mockRestore();
   });
 });

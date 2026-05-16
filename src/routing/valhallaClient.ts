@@ -1,5 +1,6 @@
 import type { GeoPoint, RouteResult } from '../domain/route';
 import type { ExclusionPolygon } from './exclusionPolygons';
+import { isAllowedUrl } from '../privacy/networkAllowlist';
 
 interface ValhallaRouteResponse {
   trip: {
@@ -9,7 +10,11 @@ interface ValhallaRouteResponse {
 }
 
 export class ValhallaClient {
-  constructor(private readonly baseUrl: string) {}
+  constructor(private readonly baseUrl: string) {
+    if (!isAllowedUrl(`${baseUrl}/status`)) {
+      throw new Error(`Valhalla baseUrl not in allowlist: ${baseUrl}`);
+    }
+  }
 
   async route(
     start: GeoPoint,
