@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll } from 'vitest';
 import { Router } from '../../src/routing/router';
 import { ValhallaClient } from '../../src/routing/valhallaClient';
 import { CameraStore } from '../../src/data/cameraStore';
+import { resolveCamera } from '../../src/data/resolvedCamera';
 import { COMMUTER_PROFILE, VULNERABLE_PROFILE } from '../../src/domain/threatProfile';
 import type { Camera } from '../../src/domain/camera';
 
@@ -31,7 +32,7 @@ const SEED: readonly Camera[] = [
 describe('Router.compareRoutes (integration)', () => {
   it('returns shortest + private routes with a sensible diff', async () => {
     if (!valhallaReady) return;
-    const router = new Router(new ValhallaClient(VALHALLA_URL), new CameraStore(SEED));
+    const router = new Router(new ValhallaClient(VALHALLA_URL), new CameraStore(SEED.map(resolveCamera)));
     const cmp = await router.compareRoutes(
       { lat: 33.7490, lon: -84.3880 },
       { lat: 33.7700, lon: -84.3600 },
@@ -45,7 +46,7 @@ describe('Router.compareRoutes (integration)', () => {
 
   it('Vulnerable profile avoids more cameras than Commuter for the same trip', async () => {
     if (!valhallaReady) return;
-    const router = new Router(new ValhallaClient(VALHALLA_URL), new CameraStore(SEED));
+    const router = new Router(new ValhallaClient(VALHALLA_URL), new CameraStore(SEED.map(resolveCamera)));
     const start = { lat: 33.7490, lon: -84.3880 };
     const end = { lat: 33.7700, lon: -84.3600 };
     const cmpCom = await router.compareRoutes(start, end, COMMUTER_PROFILE);

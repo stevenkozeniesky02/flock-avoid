@@ -1,6 +1,7 @@
 import { isCameraType, type Camera } from '../domain/camera';
 import type { GeoPoint } from '../domain/route';
 import { isAllowedUrl } from '../privacy/networkAllowlist';
+import { resolveCamera, type ResolvedCamera } from './resolvedCamera';
 
 const EARTH_RADIUS_M = 6_371_000;
 
@@ -17,32 +18,42 @@ function parseCamera(raw: unknown, index: number): Camera {
   }
   if (typeof r['lat'] !== 'number') throw new Error(`camera ${r['id']} has invalid lat`);
   if (typeof r['lon'] !== 'number') throw new Error(`camera ${r['id']} has invalid lon`);
-  if (typeof r['confidence'] !== 'number') {
-    throw new Error(`camera ${r['id']} has invalid confidence`);
-  }
+  if (typeof r['confidence'] !== 'number') throw new Error(`camera ${r['id']} has invalid confidence`);
   if (typeof r['source'] !== 'string' || !VALID_SOURCES.has(r['source'])) {
     throw new Error(`camera ${r['id']} has invalid source: ${String(r['source'])}`);
   }
-  return {
+  const base: Camera = {
     id: r['id'],
     type: r['type'],
-    lat: r['lat'] as number,
-    lon: r['lon'] as number,
-    confidence: r['confidence'] as number,
+    lat: r['lat'],
+    lon: r['lon'],
+    confidence: r['confidence'],
     source: r['source'] as Camera['source'],
   };
+  const out: Camera = {
+    ...base,
+    ...(typeof r['direction'] === 'number' ? { direction: r['direction'] } : {}),
+    ...(typeof r['rangeMeters'] === 'number' ? { rangeMeters: r['rangeMeters'] } : {}),
+    ...(typeof r['fovDegrees'] === 'number' ? { fovDegrees: r['fovDegrees'] } : {}),
+    ...(r['directionConfidence'] === 'known' ||
+    r['directionConfidence'] === 'inferred' ||
+    r['directionConfidence'] === 'unknown'
+      ? { directionConfidence: r['directionConfidence'] }
+      : {}),
+  };
+  return out;
 }
 
 export class CameraStore {
-  private readonly cameras: readonly Camera[];
+  private readonly cameras: readonly ResolvedCamera[];
 
-  constructor(cameras: readonly Camera[]) {
+  constructor(cameras: readonly ResolvedCamera[]) {
     this.cameras = cameras;
   }
 
   static async loadFromUrl(url: string): Promise<CameraStore> {
     if (url.startsWith('/') || url.startsWith('./')) {
-      // relative URL — same-origin by construction, no allowlist check needed
+      // same-origin, no allowlist check needed
     } else if (!isAllowedUrl(url)) {
       throw new Error(`Camera dataset URL not in allowlist: ${url}`);
     }
@@ -52,15 +63,15 @@ export class CameraStore {
     if (!Array.isArray(body.cameras)) {
       throw new Error('Camera dataset JSON missing top-level "cameras" array');
     }
-    const cameras = body.cameras.map((raw, i) => parseCamera(raw, i));
-    return new CameraStore(cameras);
+    const resolved = body.cameras.map((raw, i) => resolveCamera(parseCamera(raw, i)));
+    return new CameraStore(resolved);
   }
 
-  all(): readonly Camera[] {
+  all(): readonly ResolvedCamera[] {
     return this.cameras;
   }
 
-  within(center: GeoPoint, radiusMeters: number): readonly Camera[] {
+  within(center: GeoPoint, radiusMeters: number): readonly ResolvedCamera[] {
     if (radiusMeters <= 0) return [];
     return this.cameras.filter(
       (c) => CameraStore.distanceMeters(center, { lat: c.lat, lon: c.lon }) <= radiusMeters,
