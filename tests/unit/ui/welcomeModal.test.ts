@@ -6,42 +6,40 @@ import {
   WELCOME_DISMISSED_KEY,
 } from '../../../src/ui/welcomeModal';
 
-describe('welcomeModal', () => {
+describe('welcomeModal v0.2', () => {
   beforeEach(() => {
     document.body.innerHTML = '<div id="c"></div>';
     localStorage.clear();
   });
 
-  it('shouldShowWelcomeModal returns true when no flag set', () => {
+  it('shouldShowWelcomeModal honors the dismissed flag', () => {
     expect(shouldShowWelcomeModal()).toBe(true);
-  });
-
-  it('shouldShowWelcomeModal returns false when flag set', () => {
     localStorage.setItem(WELCOME_DISMISSED_KEY, 'true');
     expect(shouldShowWelcomeModal()).toBe(false);
   });
 
-  it('mountWelcomeModal renders a modal with a "Get started" button', () => {
-    const container = document.getElementById('c')!;
-    mountWelcomeModal(container, { onDismiss: () => {} });
-    expect(container.querySelector('[data-welcome-modal]')).toBeTruthy();
-    expect(container.querySelector('button[data-action="welcome-dismiss"]')).toBeTruthy();
+  it('headline contains the v0.2 lede', () => {
+    const c = document.getElementById('c')!;
+    mountWelcomeModal(c, { onDismiss: () => {} });
+    expect(c.textContent).toMatch(/Find a route the cameras don't see/);
   });
 
-  it('clicking "Get started" calls onDismiss and sets the localStorage flag', () => {
-    const container = document.getElementById('c')!;
+  it('discloses the three privacy promises (incl. Photon)', () => {
+    const c = document.getElementById('c')!;
+    mountWelcomeModal(c, { onDismiss: () => {} });
+    expect(c.textContent).toMatch(/Routing runs on your device/);
+    expect(c.textContent).toMatch(/No accounts\.\s*No analytics/);
+    expect(c.textContent).toMatch(/photon\.komoot\.io/);
+  });
+
+  it('Get-started button dismisses and persists the flag', () => {
+    const c = document.getElementById('c')!;
     let dismissed = false;
-    mountWelcomeModal(container, { onDismiss: () => { dismissed = true; } });
-    const btn = container.querySelector('button[data-action="welcome-dismiss"]') as HTMLButtonElement;
+    mountWelcomeModal(c, { onDismiss: () => { dismissed = true; } });
+    const btn = c.querySelector('button[data-action="welcome-dismiss"]') as HTMLButtonElement;
+    expect(btn).toBeTruthy();
     btn.click();
     expect(dismissed).toBe(true);
     expect(localStorage.getItem(WELCOME_DISMISSED_KEY)).toBe('true');
-  });
-
-  it('modal contains the privacy promise text', () => {
-    const container = document.getElementById('c')!;
-    mountWelcomeModal(container, { onDismiss: () => {} });
-    expect(container.textContent).toMatch(/location/i);
-    expect(container.textContent).toMatch(/track/i);
   });
 });
