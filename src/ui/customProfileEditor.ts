@@ -45,7 +45,9 @@ export function renderCustomProfileEditor(
 
   const h = document.createElement('h3');
   h.textContent = 'Custom profile';
-  h.style.cssText = 'margin:0 0 12px';
+  h.style.cssText =
+    'margin:0 0 var(--space-3);font-family:var(--font-family-sans);' +
+    'font-size:var(--font-size-lg);font-weight:600;color:var(--color-brand-ink)';
   container.appendChild(h);
 
   container.appendChild(
@@ -72,8 +74,9 @@ export function renderCustomProfileEditor(
   disclosure.dataset['disclosure'] = 'advanced';
   disclosure.textContent = '▸ Per-camera-type weights';
   disclosure.style.cssText =
-    'display:block;width:100%;text-align:left;padding:8px;margin:12px 0 8px;' +
-    'border:0;background:#f0f0f0;border-radius:4px;cursor:pointer;font:inherit';
+    'display:block;width:100%;text-align:left;padding:var(--space-2);margin:var(--space-3) 0 var(--space-2);' +
+    'border:0;background:var(--color-brand-primary-soft);border-radius:var(--radius-md);' +
+    'cursor:pointer;font-family:var(--font-family-sans);font-size:var(--font-size-sm);color:var(--color-brand-ink)';
   container.appendChild(disclosure);
 
   const advanced = document.createElement('div');
@@ -96,7 +99,9 @@ export function renderCustomProfileEditor(
   });
 
   const saveLabel = document.createElement('label');
-  saveLabel.style.cssText = 'display:block;margin:12px 0;font-size:13px';
+  saveLabel.style.cssText =
+    'display:block;margin:var(--space-3) 0;font-size:var(--font-size-xs);' +
+    'font-family:var(--font-family-sans);color:var(--color-brand-ink-muted)';
   const save = document.createElement('input');
   save.type = 'checkbox';
   save.name = 'saveDefault';
@@ -109,8 +114,9 @@ export function renderCustomProfileEditor(
   apply.dataset['action'] = 'apply';
   apply.textContent = 'Apply';
   apply.style.cssText =
-    'display:block;width:100%;padding:10px;background:#1976d2;color:#fff;border:0;' +
-    'border-radius:6px;cursor:pointer;font:inherit';
+    'display:block;width:100%;padding:var(--space-3);background:var(--color-brand-primary);' +
+    'color:#fff;border:0;border-radius:var(--radius-md);cursor:pointer;' +
+    'font-family:var(--font-family-sans);font-size:var(--font-size-base);font-weight:600';
   apply.addEventListener('click', () => {
     const profile: ThreatProfile = Object.freeze({
       preset: 'custom',
@@ -140,7 +146,9 @@ function sliderRow(
   onChange: (v: number) => void,
 ): HTMLElement {
   const row = document.createElement('label');
-  row.style.cssText = 'display:block;margin-bottom:10px;font-size:13px';
+  row.style.cssText =
+    'display:block;margin-bottom:var(--space-2);font-size:var(--font-size-sm);' +
+    'color:var(--color-brand-ink);font-family:var(--font-family-sans)';
   row.textContent = label;
   const input = document.createElement('input');
   input.type = 'range';
@@ -149,7 +157,8 @@ function sliderRow(
   input.max = String(max);
   input.step = String(step);
   input.value = String(value);
-  input.style.cssText = 'display:block;width:100%;margin-top:6px';
+  input.style.cssText =
+    'display:block;width:100%;margin-top:var(--space-1);accent-color:var(--color-brand-primary)';
   input.addEventListener('input', () => onChange(parseFloat(input.value)));
   row.appendChild(input);
   return row;
@@ -161,7 +170,9 @@ function weightRow(
   onChange: (v: number) => void,
 ): HTMLElement {
   const row = document.createElement('label');
-  row.style.cssText = 'display:block;margin-bottom:8px;font-size:12px';
+  row.style.cssText =
+    'display:block;margin-bottom:var(--space-2);font-size:var(--font-size-xs);' +
+    'color:var(--color-brand-ink);font-family:var(--font-family-sans)';
   row.textContent = type;
   const input = document.createElement('input');
   input.type = 'range';
@@ -170,7 +181,8 @@ function weightRow(
   input.step = '1';
   input.value = String(value);
   input.dataset['weightType'] = type;
-  input.style.cssText = 'display:block;width:100%;margin-top:4px';
+  input.style.cssText =
+    'display:block;width:100%;margin-top:var(--space-1);accent-color:var(--color-brand-primary)';
   input.addEventListener('input', () => onChange(parseInt(input.value, 10)));
   row.appendChild(input);
   return row;
