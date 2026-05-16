@@ -10,11 +10,10 @@ function isExternal(url: string): boolean {
 }
 
 async function planRoute(page: import('@playwright/test').Page): Promise<void> {
+  // Dismiss welcome modal FIRST — it backdrops the map; waiting for canvas behind it can flake.
+  await dismissWelcomeModalIfPresent(page);
   await page.locator('#map canvas').first().waitFor({ state: 'visible', timeout: 15_000 });
   await page.waitForTimeout(1500);
-
-  // Dismiss welcome modal if present
-  await dismissWelcomeModalIfPresent(page);
 
   // Activate planner via the search bar
   await page.locator('[data-search-bar-activate]').click();
