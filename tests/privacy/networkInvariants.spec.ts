@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { isAllowedUrl } from '../../src/privacy/networkAllowlist';
+import { dismissWelcomeModalIfPresent } from '../benchmark/helpers/benchmarkHarness';
 
 const VALHALLA_URL = 'http://localhost:8002';
 const APP_ORIGIN = 'http://localhost:5173';
@@ -42,6 +43,7 @@ test('every external network request goes to an allowlisted host', async ({ page
   });
 
   await page.goto('/');
+  await dismissWelcomeModalIfPresent(page);
   await page.waitForLoadState('networkidle');
   await planRoute(page);
 
@@ -61,6 +63,7 @@ test('route request body does NOT carry user identifiers', async ({ page }) => {
   });
 
   await page.goto('/');
+  await dismissWelcomeModalIfPresent(page);
   await planRoute(page);
 
   expect(valhallaBodies.length).toBeGreaterThan(0);

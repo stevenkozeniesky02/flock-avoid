@@ -6,3 +6,4 @@ test-results/
 .DS_Store
 .superpowers/
 dist-dataset/
+lighthouse-*.json

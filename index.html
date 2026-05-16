@@ -3,12 +3,13 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Flock-Avoid (dev)</title>
+    <meta name="theme-color" content="#3a5fff" />
+    <title>FlockAvoid — Route around surveillance</title>
   </head>
-  <body style="margin:0;font-family:system-ui,sans-serif">
+  <body style="margin:0;background:var(--color-brand-canvas);color:var(--color-brand-ink);font-family:var(--font-family-sans)">
     <div id="app" style="display:flex;height:100vh">
-      <div id="sidebar" style="width:340px;border-right:1px solid #ddd;padding:16px;overflow:auto"></div>
-      <div id="map" style="flex:1"></div>
+      <div id="sidebar" style="flex-shrink:0"></div>
+      <div id="map" style="flex:1;position:relative"></div>
     </div>
     <script type="module" src="/src/main.ts"></script>
   </body>

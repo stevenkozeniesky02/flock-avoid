@@ -1,5 +1,15 @@
 import { test, type Page } from '@playwright/test';
 
+export async function dismissWelcomeModalIfPresent(page: Page): Promise<void> {
+  const btn = page.locator('button[data-action="welcome-dismiss"]');
+  try {
+    await btn.waitFor({ state: 'visible', timeout: 1500 });
+    await btn.click();
+  } catch {
+    // Modal wasn't present — nothing to do
+  }
+}
+
 export interface BenchmarkRoute {
   readonly name: string;
   readonly startClick: { readonly x: number; readonly y: number };
@@ -20,6 +30,7 @@ export async function planRoute(
   route: BenchmarkRoute,
 ): Promise<BenchmarkResult> {
   await page.goto('/');
+  await dismissWelcomeModalIfPresent(page);
   await page.locator('#map canvas').first().waitFor({ state: 'visible', timeout: 15_000 });
   await page.waitForTimeout(1500);
 

@@ -1,5 +1,6 @@
 import type { GeoPoint, RouteComparison, RouteDegradation } from '../domain/route';
 import type { ThreatProfile } from '../domain/threatProfile';
+import { mountErrorBanner, clearErrorBanners } from './errorBanner';
 
 export interface RoutePlannerCallbacks {
   readonly onPlanRequested: (start: GeoPoint, end: GeoPoint) => Promise<RouteComparison>;
@@ -42,8 +43,10 @@ export class RoutePlanner {
   private render(): void {
     this.container.innerHTML = '';
     const heading = document.createElement('h3');
-    heading.textContent = `Plan route — profile: ${this.profile.preset}`;
-    heading.style.cssText = 'margin:0 0 12px';
+    heading.textContent = `Plan route — ${this.profile.preset}`;
+    heading.style.cssText =
+      'margin:0 0 var(--space-3);font-family:var(--font-family-sans);' +
+      'font-size:var(--font-size-lg);font-weight:600;color:var(--color-brand-ink)';
     this.container.appendChild(heading);
 
     this.container.appendChild(this.pointRow('Start', this.state.start, 'start'));
@@ -54,26 +57,34 @@ export class RoutePlanner {
     plan.textContent = 'Plan route';
     plan.disabled = !(this.state.start && this.state.end);
     plan.style.cssText =
-      'display:block;width:100%;padding:10px;margin-top:12px;background:#1976d2;color:#fff;' +
-      'border:0;border-radius:6px;cursor:pointer;font:inherit';
+      'display:block;width:100%;padding:var(--space-3);margin-top:var(--space-3);' +
+      'background:var(--color-brand-primary);color:#fff;border:0;' +
+      'border-radius:var(--radius-md);cursor:pointer;font-family:var(--font-family-sans);' +
+      'font-size:var(--font-size-base);font-weight:600;opacity:1';
+    if (plan.disabled) plan.style.opacity = '0.4';
     plan.addEventListener('click', () => void this.runPlan());
     this.container.appendChild(plan);
   }
 
   private pointRow(label: string, value: GeoPoint | null, kind: 'start' | 'end'): HTMLElement {
     const row = document.createElement('div');
-    row.style.cssText = 'padding:8px;border:1px solid #ddd;border-radius:6px;margin-bottom:8px';
+    row.style.cssText =
+      'padding:var(--space-3);border:1px solid var(--color-brand-border);' +
+      'border-radius:var(--radius-md);margin-bottom:var(--space-2);' +
+      'font-family:var(--font-family-sans)';
     const text = value
       ? `${label}: ${value.lat.toFixed(4)}, ${value.lon.toFixed(4)}`
       : `${label}: not set`;
-    row.innerHTML = `<div style="font-size:13px">${text}</div>`;
+    row.innerHTML = `<div style="font-size:var(--font-size-sm);color:var(--color-brand-ink)">${text}</div>`;
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.textContent =
       this.state.awaiting === kind ? `Click map for ${label}…` : `Set ${label} on map`;
     btn.style.cssText =
-      'margin-top:6px;padding:4px 10px;background:#fff;border:1px solid #aaa;' +
-      'border-radius:4px;cursor:pointer;font:inherit;font-size:12px';
+      'margin-top:var(--space-2);padding:var(--space-1) var(--space-3);' +
+      'background:var(--color-brand-surface);border:1px solid var(--color-brand-border);' +
+      'border-radius:var(--radius-sm);cursor:pointer;font-family:var(--font-family-sans);' +
+      'font-size:var(--font-size-xs);color:var(--color-brand-ink)';
     btn.addEventListener('click', () => {
       this.state.awaiting = kind;
       this.render();
@@ -84,7 +95,7 @@ export class RoutePlanner {
 
   private async runPlan(): Promise<void> {
     if (!this.state.start || !this.state.end) return;
-    this.clearError();
+    clearErrorBanners(this.container);
     try {
       const cmp = await this.callbacks.onPlanRequested(this.state.start, this.state.end);
       if (cmp.degradation) {
@@ -93,36 +104,23 @@ export class RoutePlanner {
         this.renderComparison(cmp);
       }
     } catch (err) {
-      this.renderError(err instanceof Error ? err.message : String(err));
+      mountErrorBanner(this.container, err instanceof Error ? err.message : String(err));
     }
-  }
-
-  private renderError(message: string): void {
-    this.clearError();
-    const err = document.createElement('div');
-    err.dataset['errorBanner'] = 'true';
-    err.style.cssText =
-      'margin-top:12px;padding:10px;background:#fdecea;color:#611a15;border:1px solid #f5c6cb;' +
-      'border-radius:6px;font-size:13px';
-    err.textContent = `Routing failed: ${message}`;
-    this.container.appendChild(err);
-  }
-
-  private clearError(): void {
-    this.container.querySelectorAll('[data-error-banner]').forEach((el) => el.remove());
   }
 
   private renderDegradation(degradation: RouteDegradation): void {
     const panel = document.createElement('div');
     panel.dataset['degradationPanel'] = 'true';
     panel.style.cssText =
-      'margin-top:16px;padding:12px;border:1px solid #f5a623;border-radius:6px;background:#fff7e6';
+      'margin-top:var(--space-4);padding:var(--space-3);' +
+      'border:1px solid var(--color-state-warning);border-radius:var(--radius-md);' +
+      'background:var(--color-state-warning-soft);font-family:var(--font-family-sans)';
     const heading = document.createElement('strong');
     heading.textContent = 'No private route possible with this profile';
-    heading.style.color = '#7a5a00';
+    heading.style.cssText = 'color:var(--color-state-warning);font-size:var(--font-size-base)';
     panel.appendChild(heading);
     const body = document.createElement('p');
-    body.style.cssText = 'margin:8px 0;font-size:13px';
+    body.style.cssText = 'margin:var(--space-2) 0;font-size:var(--font-size-sm);color:var(--color-brand-ink)';
     body.textContent = 'Try a different profile:';
     panel.appendChild(body);
     for (const preview of degradation.alternativePreviews) {
@@ -130,11 +128,11 @@ export class RoutePlanner {
       btn.type = 'button';
       btn.dataset['profileSwap'] = preview.profile.preset;
       btn.style.cssText =
-        'display:block;width:100%;padding:8px;margin-bottom:6px;background:#fff;' +
-        'border:1px solid #f5a623;border-radius:4px;cursor:pointer;font:inherit;text-align:left;font-size:13px';
-      btn.textContent =
-        `Use ${cap(preview.profile.preset)} ` +
-        `(would avoid ~${preview.camerasAvoidedEstimate} cameras)`;
+        'display:block;width:100%;padding:var(--space-2);margin-bottom:var(--space-1);' +
+        'background:var(--color-brand-surface);border:1px solid var(--color-state-warning);' +
+        'border-radius:var(--radius-sm);cursor:pointer;font-family:var(--font-family-sans);' +
+        'text-align:left;font-size:var(--font-size-sm);color:var(--color-brand-ink)';
+      btn.textContent = `Use ${cap(preview.profile.preset)} (would avoid ~${preview.camerasAvoidedEstimate} cameras)`;
       btn.addEventListener('click', () => this.callbacks.onProfileSwap?.(preview.profile));
       panel.appendChild(btn);
     }
@@ -143,27 +141,29 @@ export class RoutePlanner {
 
   private renderComparison(cmp: RouteComparison): void {
     const panel = document.createElement('div');
-    panel.style.cssText = 'margin-top:16px;padding-top:16px;border-top:1px solid #ddd';
+    panel.style.cssText =
+      'margin-top:var(--space-4);padding-top:var(--space-4);' +
+      'border-top:1px solid var(--color-brand-border);font-family:var(--font-family-sans)';
     panel.innerHTML = `
-      <div style="padding:10px;border:2px solid #d32f2f;border-radius:6px;margin-bottom:8px">
+      <div style="padding:var(--space-3);border:2px solid var(--color-state-danger);border-radius:var(--radius-md);margin-bottom:var(--space-2);background:var(--color-state-danger-soft)">
         <div style="display:flex;justify-content:space-between">
-          <strong style="color:#d32f2f">Shortest</strong>
-          <span>${formatDuration(cmp.shortest.durationSeconds)}</span>
+          <strong style="color:var(--color-state-danger);font-size:var(--font-size-base)">Shortest</strong>
+          <span style="color:var(--color-brand-ink);font-size:var(--font-size-base)">${formatDuration(cmp.shortest.durationSeconds)}</span>
         </div>
-        <div style="font-size:12px;color:#666;margin-top:4px">
+        <div style="font-size:var(--font-size-xs);color:var(--color-brand-ink-muted);margin-top:var(--space-1)">
           ${cmp.shortest.camerasOnRoute} cameras · score ${cmp.shortest.surveillanceScore.toFixed(0)}
         </div>
       </div>
-      <div style="padding:10px;border:2px solid #2e7d32;border-radius:6px;background:#f1f8e9;margin-bottom:8px">
+      <div style="padding:var(--space-3);border:2px solid var(--color-state-success);border-radius:var(--radius-md);background:var(--color-state-success-soft);margin-bottom:var(--space-2)">
         <div style="display:flex;justify-content:space-between">
-          <strong style="color:#2e7d32">Private</strong>
-          <span>${formatDuration(cmp.private.durationSeconds)}</span>
+          <strong style="color:var(--color-state-success);font-size:var(--font-size-base)">Private</strong>
+          <span style="color:var(--color-brand-ink);font-size:var(--font-size-base)">${formatDuration(cmp.private.durationSeconds)}</span>
         </div>
-        <div style="font-size:12px;color:#666;margin-top:4px">
+        <div style="font-size:var(--font-size-xs);color:var(--color-brand-ink-muted);margin-top:var(--space-1)">
           ${cmp.private.camerasOnRoute} cameras · score ${cmp.private.surveillanceScore.toFixed(0)}
         </div>
       </div>
-      <div style="padding:10px;background:#e8f5e9;border-radius:6px;text-align:center;font-size:13px">
+      <div style="padding:var(--space-3);background:var(--color-state-success-soft);border-radius:var(--radius-md);text-align:center;font-size:var(--font-size-sm);color:var(--color-brand-ink)">
         <strong>+${formatDuration(cmp.diff.extraSeconds)}</strong> ·
         <strong>${cmp.diff.camerasAvoided} cameras avoided</strong>
       </div>
