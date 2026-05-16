@@ -19,7 +19,12 @@ export class RoutePlanner {
     private readonly container: HTMLElement,
     private readonly callbacks: RoutePlannerCallbacks,
     private readonly profile: ThreatProfile,
+    initial?: { readonly start: GeoPoint; readonly end: GeoPoint },
   ) {
+    if (initial) {
+      this.state.start = initial.start;
+      this.state.end = initial.end;
+    }
     this.render();
   }
 

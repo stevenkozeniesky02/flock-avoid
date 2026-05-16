@@ -41,19 +41,31 @@ function mountPlanner(
   mapView: MapView,
   router: Router,
   profile: ThreatProfile,
+  initial?: { readonly start: GeoPoint; readonly end: GeoPoint },
 ): void {
   sidebar.innerHTML = '';
+  let lastStart: GeoPoint | null = initial?.start ?? null;
+  let lastEnd: GeoPoint | null = initial?.end ?? null;
   const planner = new RoutePlanner(
     sidebar,
     {
       onPlanRequested: async (start, end) => {
+        lastStart = start;
+        lastEnd = end;
         const cmp = await router.compareRoutes(start, end, profile);
-        mapView.renderComparison(cmp);
+        if (!cmp.degradation) mapView.renderComparison(cmp);
         return cmp;
       },
-      onProfileSwap: (newProfile) => mountPlanner(sidebar, mapView, router, newProfile),
+      onProfileSwap: (newProfile) => {
+        if (lastStart && lastEnd) {
+          mountPlanner(sidebar, mapView, router, newProfile, { start: lastStart, end: lastEnd });
+        } else {
+          mountPlanner(sidebar, mapView, router, newProfile);
+        }
+      },
     },
     profile,
+    initial,
   );
   mapView.onClick((p) => planner.handleMapClick(p));
 }
