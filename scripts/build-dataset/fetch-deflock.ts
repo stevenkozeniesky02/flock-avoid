@@ -1,4 +1,4 @@
-import { US_BBOX } from './cities.ts';
+import { US_BBOX } from './cities';
 
 /**
  * A single camera record as returned by a DeFlock CDN tile.

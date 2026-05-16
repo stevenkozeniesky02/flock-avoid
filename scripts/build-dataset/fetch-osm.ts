@@ -1,4 +1,4 @@
-import { US_BBOX } from './cities.ts';
+import { US_BBOX } from './cities';
 
 export interface RawOsmElement {
   readonly type: 'node' | 'way' | 'relation';
