@@ -18,10 +18,19 @@ export class Router {
   ): Promise<RouteComparison> {
     const exclusions = camerasToExclusionPolygons(this.cameras.all(), profile);
 
-    const [shortestRaw, privateRaw] = await Promise.all([
-      this.valhalla.route(start, end, []),
-      this.valhalla.route(start, end, exclusions),
-    ]);
+    const shortestPromise = this.valhalla.route(start, end, []);
+    const privatePromise = this.valhalla.route(start, end, exclusions).catch((err: unknown) => {
+      if (err instanceof Error && /No path could be found/i.test(err.message)) {
+        throw new Error(
+          `No private route possible for the ${profile.preset} profile in this area — ` +
+            `exclusion zones around nearby cameras completely block routing. ` +
+            `Try a less restrictive profile (Commuter) or different start/end points.`,
+        );
+      }
+      throw err;
+    });
+
+    const [shortestRaw, privateRaw] = await Promise.all([shortestPromise, privatePromise]);
 
     const shortest = this.annotate(shortestRaw, profile);
     const privateR = this.annotate(privateRaw, profile);
