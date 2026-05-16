@@ -1,5 +1,16 @@
 import { US_BBOX } from './cities';
 
+const EXPECTED_TILE_HOST = 'cdn.deflock.me';
+
+function assertTileUrlSafe(url: string): void {
+  const parsed = new URL(url);
+  if (parsed.hostname !== EXPECTED_TILE_HOST) {
+    throw new Error(
+      `DeFlock tile_url hostname "${parsed.hostname}" does not match expected "${EXPECTED_TILE_HOST}"`,
+    );
+  }
+}
+
 /**
  * A single camera record as returned by a DeFlock CDN tile.
  * Shape: bare JSON array of these per tile.
@@ -110,6 +121,7 @@ async function fetchSingleTile(
 ): Promise<RawDeflockRecord[]> {
   const [lat, lon] = regionKey.split('/');
   const url = tileUrlTemplate.replace('{lat}', lat!).replace('{lon}', lon!);
+  assertTileUrlSafe(url);
   const resp = await fetch(url, { headers: { 'User-Agent': USER_AGENT } });
   if (!resp.ok) {
     console.warn(`DeFlock tile ${regionKey} returned ${resp.status}; treating as empty`);
@@ -122,13 +134,13 @@ async function fetchSingleTile(
   return data.filter((r): r is RawDeflockRecord => {
     if (typeof r !== 'object' || r === null) return false;
     const rec = r as Record<string, unknown>;
-    return (
-      (typeof rec['id'] === 'string' || typeof rec['id'] === 'number') &&
-      typeof rec['lat'] === 'number' &&
-      typeof rec['lon'] === 'number' &&
-      typeof rec['tags'] === 'object' &&
-      rec['tags'] !== null
-    );
+    if (typeof rec['lat'] !== 'number' || typeof rec['lon'] !== 'number') return false;
+    if (typeof rec['tags'] !== 'object' || rec['tags'] === null) return false;
+    if (typeof rec['id'] !== 'string' && typeof rec['id'] !== 'number') return false;
+    // Per-record US bbox filter (a tile may straddle the border)
+    if (rec['lat'] < US_BBOX.minLat || rec['lat'] > US_BBOX.maxLat) return false;
+    if (rec['lon'] < US_BBOX.minLon || rec['lon'] > US_BBOX.maxLon) return false;
+    return true;
   });
 }
 
