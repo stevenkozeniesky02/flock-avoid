@@ -1,8 +1,9 @@
-import type { GeoPoint, RouteComparison } from '../domain/route';
+import type { GeoPoint, RouteComparison, RouteDegradation } from '../domain/route';
 import type { ThreatProfile } from '../domain/threatProfile';
 
 export interface RoutePlannerCallbacks {
   readonly onPlanRequested: (start: GeoPoint, end: GeoPoint) => Promise<RouteComparison>;
+  readonly onProfileSwap?: (newProfile: ThreatProfile) => void;
 }
 
 interface State {
@@ -18,11 +19,15 @@ export class RoutePlanner {
     private readonly container: HTMLElement,
     private readonly callbacks: RoutePlannerCallbacks,
     private readonly profile: ThreatProfile,
+    initial?: { readonly start: GeoPoint; readonly end: GeoPoint },
   ) {
+    if (initial) {
+      this.state.start = initial.start;
+      this.state.end = initial.end;
+    }
     this.render();
   }
 
-  /** Called from main when the user clicks the map. */
   handleMapClick(point: GeoPoint): void {
     if (this.state.awaiting === 'start') {
       this.state.start = point;
@@ -82,7 +87,11 @@ export class RoutePlanner {
     this.clearError();
     try {
       const cmp = await this.callbacks.onPlanRequested(this.state.start, this.state.end);
-      this.renderComparison(cmp);
+      if (cmp.degradation) {
+        this.renderDegradation(cmp.degradation);
+      } else {
+        this.renderComparison(cmp);
+      }
     } catch (err) {
       this.renderError(err instanceof Error ? err.message : String(err));
     }
@@ -101,6 +110,35 @@ export class RoutePlanner {
 
   private clearError(): void {
     this.container.querySelectorAll('[data-error-banner]').forEach((el) => el.remove());
+  }
+
+  private renderDegradation(degradation: RouteDegradation): void {
+    const panel = document.createElement('div');
+    panel.dataset['degradationPanel'] = 'true';
+    panel.style.cssText =
+      'margin-top:16px;padding:12px;border:1px solid #f5a623;border-radius:6px;background:#fff7e6';
+    const heading = document.createElement('strong');
+    heading.textContent = 'No private route possible with this profile';
+    heading.style.color = '#7a5a00';
+    panel.appendChild(heading);
+    const body = document.createElement('p');
+    body.style.cssText = 'margin:8px 0;font-size:13px';
+    body.textContent = 'Try a different profile:';
+    panel.appendChild(body);
+    for (const preview of degradation.alternativePreviews) {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.dataset['profileSwap'] = preview.profile.preset;
+      btn.style.cssText =
+        'display:block;width:100%;padding:8px;margin-bottom:6px;background:#fff;' +
+        'border:1px solid #f5a623;border-radius:4px;cursor:pointer;font:inherit;text-align:left;font-size:13px';
+      btn.textContent =
+        `Use ${cap(preview.profile.preset)} ` +
+        `(would avoid ~${preview.camerasAvoidedEstimate} cameras)`;
+      btn.addEventListener('click', () => this.callbacks.onProfileSwap?.(preview.profile));
+      panel.appendChild(btn);
+    }
+    this.container.appendChild(panel);
   }
 
   private renderComparison(cmp: RouteComparison): void {
@@ -137,4 +175,8 @@ export class RoutePlanner {
 function formatDuration(seconds: number): string {
   const m = Math.round(seconds / 60);
   return `${m} min`;
+}
+
+function cap(s: string): string {
+  return s.charAt(0).toUpperCase() + s.slice(1);
 }

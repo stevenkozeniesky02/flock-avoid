@@ -1,5 +1,5 @@
 import type { GeoPoint, RouteResult } from '../domain/route';
-import type { ExclusionPolygon } from './exclusionPolygons';
+import type { ExclusionPolygon } from './conePolygon.types';
 import { isAllowedUrl } from '../privacy/networkAllowlist';
 
 interface ValhallaRouteResponse {

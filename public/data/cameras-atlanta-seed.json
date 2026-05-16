@@ -1,19 +1,19 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "generatedAt": "2026-05-15T00:00:00Z",
   "source": "hand-curated-v0-seed",
   "cameras": [
-    { "id": "atl-001", "type": "alpr_government", "lat": 33.7490, "lon": -84.3880, "confidence": 0.9, "source": "seed" },
-    { "id": "atl-002", "type": "alpr_government", "lat": 33.7510, "lon": -84.3900, "confidence": 0.9, "source": "seed" },
-    { "id": "atl-003", "type": "alpr_government", "lat": 33.7530, "lon": -84.3850, "confidence": 0.9, "source": "seed" },
-    { "id": "atl-004", "type": "alpr_government", "lat": 33.7470, "lon": -84.3920, "confidence": 0.9, "source": "seed" },
-    { "id": "atl-005", "type": "alpr_government", "lat": 33.7450, "lon": -84.3870, "confidence": 0.9, "source": "seed" },
-    { "id": "atl-006", "type": "cctv_municipal", "lat": 33.7505, "lon": -84.3865, "confidence": 0.8, "source": "seed" },
-    { "id": "atl-007", "type": "cctv_municipal", "lat": 33.7460, "lon": -84.3895, "confidence": 0.8, "source": "seed" },
-    { "id": "atl-008", "type": "red_light_camera", "lat": 33.7500, "lon": -84.3950, "confidence": 0.85, "source": "seed" },
-    { "id": "atl-009", "type": "red_light_camera", "lat": 33.7440, "lon": -84.3840, "confidence": 0.85, "source": "seed" },
-    { "id": "atl-010", "type": "alpr_private", "lat": 33.7480, "lon": -84.3830, "confidence": 0.7, "source": "seed" },
-    { "id": "atl-011", "type": "speed_camera", "lat": 33.7520, "lon": -84.3940, "confidence": 0.8, "source": "seed" },
-    { "id": "atl-012", "type": "cctv_dot_traffic", "lat": 33.7495, "lon": -84.3835, "confidence": 0.75, "source": "seed" }
+    { "id": "atl-001", "type": "alpr_government", "lat": 33.7490, "lon": -84.3880, "confidence": 0.9, "source": "seed", "direction": 90, "rangeMeters": 35, "fovDegrees": 30, "directionConfidence": "known" },
+    { "id": "atl-002", "type": "alpr_government", "lat": 33.7510, "lon": -84.3900, "confidence": 0.9, "source": "seed", "direction": 180, "rangeMeters": 35, "fovDegrees": 30, "directionConfidence": "known" },
+    { "id": "atl-003", "type": "alpr_government", "lat": 33.7530, "lon": -84.3850, "confidence": 0.9, "source": "seed", "direction": 270, "rangeMeters": 35, "fovDegrees": 30, "directionConfidence": "known" },
+    { "id": "atl-004", "type": "alpr_government", "lat": 33.7470, "lon": -84.3920, "confidence": 0.9, "source": "seed", "direction": 0, "rangeMeters": 35, "fovDegrees": 30, "directionConfidence": "known" },
+    { "id": "atl-005", "type": "alpr_government", "lat": 33.7450, "lon": -84.3870, "confidence": 0.9, "source": "seed", "direction": 45, "rangeMeters": 35, "fovDegrees": 30, "directionConfidence": "known" },
+    { "id": "atl-006", "type": "cctv_municipal", "lat": 33.7505, "lon": -84.3865, "confidence": 0.8, "source": "seed", "direction": 135, "rangeMeters": 50, "fovDegrees": 70, "directionConfidence": "known" },
+    { "id": "atl-007", "type": "cctv_municipal", "lat": 33.7460, "lon": -84.3895, "confidence": 0.8, "source": "seed", "rangeMeters": 50, "fovDegrees": 70, "directionConfidence": "unknown" },
+    { "id": "atl-008", "type": "red_light_camera", "lat": 33.7500, "lon": -84.3950, "confidence": 0.85, "source": "seed", "direction": 0, "rangeMeters": 25, "fovDegrees": 35, "directionConfidence": "known" },
+    { "id": "atl-009", "type": "red_light_camera", "lat": 33.7440, "lon": -84.3840, "confidence": 0.85, "source": "seed", "direction": 180, "rangeMeters": 25, "fovDegrees": 35, "directionConfidence": "known" },
+    { "id": "atl-010", "type": "alpr_private", "lat": 33.7480, "lon": -84.3830, "confidence": 0.7, "source": "seed", "direction": 225, "rangeMeters": 35, "fovDegrees": 30, "directionConfidence": "known" },
+    { "id": "atl-011", "type": "speed_camera", "lat": 33.7520, "lon": -84.3940, "confidence": 0.8, "source": "seed", "direction": 90, "rangeMeters": 30, "fovDegrees": 25, "directionConfidence": "known" },
+    { "id": "atl-012", "type": "cctv_dot_traffic", "lat": 33.7495, "lon": -84.3835, "confidence": 0.75, "source": "seed", "direction": 315, "rangeMeters": 80, "fovDegrees": 60, "directionConfidence": "known" }
   ]
 }

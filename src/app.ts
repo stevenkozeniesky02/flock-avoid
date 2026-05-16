@@ -1,6 +1,7 @@
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { MapView } from './ui/mapView';
 import { renderProfilePicker } from './ui/profilePicker';
+import { renderCustomProfileEditor } from './ui/customProfileEditor';
 import { RoutePlanner } from './ui/routePlanner';
 import { CameraStore } from './data/cameraStore';
 import { ValhallaClient } from './routing/valhallaClient';
@@ -19,9 +20,20 @@ export async function startApp(): Promise<void> {
   const cameraStore = await CameraStore.loadFromUrl(CAMERA_DATASET_URL);
   const mapView = new MapView('map', ATLANTA_CENTER);
   mapView.renderCameras(cameraStore.all());
-  const router = new Router(new ValhallaClient(VALHALLA_URL), cameraStore);
+  const router = new Router(new ValhallaClient(VALHALLA_URL), cameraStore, VALHALLA_URL);
 
-  renderProfilePicker(sidebar, (profile) => mountPlanner(sidebar, mapView, router, profile));
+  showPicker(sidebar, mapView, router);
+}
+
+function showPicker(sidebar: HTMLElement, mapView: MapView, router: Router): void {
+  renderProfilePicker(sidebar, {
+    onPresetPicked: (profile) => mountPlanner(sidebar, mapView, router, profile),
+    onCustomPicked: () => {
+      renderCustomProfileEditor(sidebar, {
+        onApply: (profile) => mountPlanner(sidebar, mapView, router, profile),
+      });
+    },
+  });
 }
 
 function mountPlanner(
@@ -29,14 +41,31 @@ function mountPlanner(
   mapView: MapView,
   router: Router,
   profile: ThreatProfile,
+  initial?: { readonly start: GeoPoint; readonly end: GeoPoint },
 ): void {
   sidebar.innerHTML = '';
-  const planner = new RoutePlanner(sidebar, {
-    onPlanRequested: async (start, end) => {
-      const cmp = await router.compareRoutes(start, end, profile);
-      mapView.renderComparison(cmp);
-      return cmp;
+  let lastStart: GeoPoint | null = initial?.start ?? null;
+  let lastEnd: GeoPoint | null = initial?.end ?? null;
+  const planner = new RoutePlanner(
+    sidebar,
+    {
+      onPlanRequested: async (start, end) => {
+        lastStart = start;
+        lastEnd = end;
+        const cmp = await router.compareRoutes(start, end, profile);
+        if (!cmp.degradation) mapView.renderComparison(cmp);
+        return cmp;
+      },
+      onProfileSwap: (newProfile) => {
+        if (lastStart && lastEnd) {
+          mountPlanner(sidebar, mapView, router, newProfile, { start: lastStart, end: lastEnd });
+        } else {
+          mountPlanner(sidebar, mapView, router, newProfile);
+        }
+      },
     },
-  }, profile);
+    profile,
+    initial,
+  );
   mapView.onClick((p) => planner.handleMapClick(p));
 }

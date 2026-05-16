@@ -30,3 +30,24 @@ describe('camera domain', () => {
     expect(c.id).toBe('atl-001');
   });
 });
+
+describe('Camera optional geometry fields', () => {
+  it('accepts direction in [0, 360)', () => {
+    const c: Camera = {
+      id: 'g1', type: 'alpr_government', lat: 33.75, lon: -84.39,
+      confidence: 0.9, source: 'seed',
+      direction: 180, rangeMeters: 35, fovDegrees: 30,
+      directionConfidence: 'known',
+    };
+    expect(c.direction).toBe(180);
+  });
+
+  it('compiles without the optional fields (back-compat with v0 seed)', () => {
+    const c: Camera = {
+      id: 'g2', type: 'alpr_government', lat: 33.75, lon: -84.39,
+      confidence: 0.9, source: 'seed',
+    };
+    expect(c.direction).toBeUndefined();
+    expect(c.directionConfidence).toBeUndefined();
+  });
+});
