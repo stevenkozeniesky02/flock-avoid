@@ -1,37 +1,63 @@
 import { describe, it, expect } from 'vitest';
 import {
   COMMUTER_PROFILE,
+  ACTIVIST_PROFILE,
   VULNERABLE_PROFILE,
+  CUSTOM_PROFILE_DEFAULT,
   ALL_PRESETS,
   type ThreatProfile,
 } from '../../../src/domain/threatProfile';
 import { ALL_CAMERA_TYPES } from '../../../src/domain/camera';
 
 describe('threat profile presets', () => {
-  it('Commuter preset has lower ALPR weight than Vulnerable', () => {
-    expect(COMMUTER_PROFILE.weights.alpr_government).toBeLessThan(
+  it('weights are ordered Commuter <= Activist <= Vulnerable for ALPRs', () => {
+    expect(COMMUTER_PROFILE.weights.alpr_government).toBeLessThanOrEqual(
+      ACTIVIST_PROFILE.weights.alpr_government,
+    );
+    expect(ACTIVIST_PROFILE.weights.alpr_government).toBeLessThanOrEqual(
       VULNERABLE_PROFILE.weights.alpr_government,
     );
   });
 
-  it('every preset defines a weight for every camera type', () => {
+  it('tolerance multipliers are ordered low < medium < high', () => {
+    expect(COMMUTER_PROFILE.toleranceMultiplier).toBeLessThan(
+      ACTIVIST_PROFILE.toleranceMultiplier,
+    );
+    expect(ACTIVIST_PROFILE.toleranceMultiplier).toBeLessThan(
+      VULNERABLE_PROFILE.toleranceMultiplier,
+    );
+  });
+
+  it('every preset defines weight for every camera type, in [0,100]', () => {
     for (const profile of ALL_PRESETS) {
-      for (const cameraType of ALL_CAMERA_TYPES) {
-        expect(profile.weights[cameraType]).toBeTypeOf('number');
-        expect(profile.weights[cameraType]).toBeGreaterThanOrEqual(0);
-        expect(profile.weights[cameraType]).toBeLessThanOrEqual(100);
+      for (const ct of ALL_CAMERA_TYPES) {
+        const w = profile.weights[ct];
+        expect(w).toBeTypeOf('number');
+        expect(w).toBeGreaterThanOrEqual(0);
+        expect(w).toBeLessThanOrEqual(100);
       }
     }
   });
 
-  it('Commuter has low detour tolerance, Vulnerable has high', () => {
-    expect(COMMUTER_PROFILE.detourTolerance).toBe('low');
-    expect(VULNERABLE_PROFILE.detourTolerance).toBe('high');
+  it('every preset has positive multipliers', () => {
+    for (const profile of ALL_PRESETS) {
+      expect(profile.toleranceMultiplier).toBeGreaterThan(0);
+      expect(profile.visibilityExpansionMultiplier).toBeGreaterThan(0);
+    }
   });
 
-  it('profile objects are deeply frozen so callers cannot mutate', () => {
-    const p: ThreatProfile = COMMUTER_PROFILE;
+  it('preset objects are deeply frozen', () => {
+    const p: ThreatProfile = ACTIVIST_PROFILE;
     expect(Object.isFrozen(p)).toBe(true);
     expect(Object.isFrozen(p.weights)).toBe(true);
+  });
+
+  it('CUSTOM_PROFILE_DEFAULT is a sensible starting point (between Commuter and Vulnerable)', () => {
+    expect(CUSTOM_PROFILE_DEFAULT.toleranceMultiplier).toBeGreaterThan(
+      COMMUTER_PROFILE.toleranceMultiplier,
+    );
+    expect(CUSTOM_PROFILE_DEFAULT.toleranceMultiplier).toBeLessThan(
+      VULNERABLE_PROFILE.toleranceMultiplier,
+    );
   });
 });

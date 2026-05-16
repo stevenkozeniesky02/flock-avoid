@@ -1,17 +1,10 @@
 import type { Camera } from '../domain/camera';
-import type { ThreatProfile, DetourTolerance } from '../domain/threatProfile';
+import type { ThreatProfile } from '../domain/threatProfile';
 
 /**
  * Polygon ring in Valhalla's `exclude_polygons` format: [[lon,lat], ...closed].
  */
 export type ExclusionPolygon = readonly (readonly [number, number])[];
-
-const TOLERANCE_MULTIPLIER: Record<DetourTolerance, number> = {
-  low: 0.4,
-  medium: 1.0,
-  high: 2.0,
-  unlimited: 4.0,
-};
 
 const BASE_RADIUS_AT_FULL_WEIGHT_M = 60;
 
@@ -19,7 +12,7 @@ export function exclusionRadiusForCamera(camera: Camera, profile: ThreatProfile)
   const weight = profile.weights[camera.type];
   if (weight <= 0) return 0;
   const normWeight = weight / 100;
-  return BASE_RADIUS_AT_FULL_WEIGHT_M * normWeight * TOLERANCE_MULTIPLIER[profile.detourTolerance];
+  return BASE_RADIUS_AT_FULL_WEIGHT_M * normWeight * profile.toleranceMultiplier;
 }
 
 export function camerasToExclusionPolygons(
