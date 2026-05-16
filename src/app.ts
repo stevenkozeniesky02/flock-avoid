@@ -1,3 +1,4 @@
+import 'maplibre-gl/dist/maplibre-gl.css';
 import { MapView } from './ui/mapView';
 import { renderProfilePicker } from './ui/profilePicker';
 import { RoutePlanner } from './ui/routePlanner';
