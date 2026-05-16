@@ -37,6 +37,8 @@ export function renderCameraDetailPopup(
 
 function bearingToCompass(bearing: number): string {
   const dirs = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
-  const idx = Math.round(((bearing % 360) / 45)) % 8;
+  // Normalize bearing to [0, 360) then divide into 8 sectors
+  const normalized = ((bearing % 360) + 360) % 360;
+  const idx = Math.round(normalized / 45) % 8;
   return dirs[idx]!.toLowerCase();
 }
