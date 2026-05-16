@@ -22,10 +22,11 @@ import type { ResolvedCamera } from './data/resolvedCamera';
 const ATLANTA_CENTER: GeoPoint = { lat: 33.7500, lon: -84.3890 };
 const VALHALLA_URL = '/valhalla';
 const LOCAL_SEED_URL = '/data/cameras-atlanta-seed.json';
-const RELEASE_DATASET_URL =
-  'https://github.com/stevenkozeniesky02/flock-avoid/releases/latest/download/cameras-us.json';
-const MANIFEST_URL_LIVE =
-  'https://github.com/stevenkozeniesky02/flock-avoid/releases/latest/download/cameras-us.json.meta.json';
+// /dataset is a Vite dev proxy that forwards to the GitHub Release latest URL,
+// avoiding the CORS-failing direct browser fetch. In production this URL is
+// replaced by a same-origin reverse proxy (Phase 0b-3b deployment).
+const RELEASE_DATASET_URL = '/dataset/cameras-us.json';
+const MANIFEST_URL_LIVE = '/dataset/cameras-us.json.meta.json';
 const CAMERA_DATASET_URL = import.meta.env['VITE_USE_LOCAL_SEED'] === 'true'
   ? LOCAL_SEED_URL
   : RELEASE_DATASET_URL;
