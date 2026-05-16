@@ -51,3 +51,29 @@ describe('Camera optional geometry fields', () => {
     expect(c.directionConfidence).toBeUndefined();
   });
 });
+
+describe('Camera sources array (v3)', () => {
+  it('accepts a single-source array', () => {
+    const c: Camera = {
+      id: 'x', type: 'alpr_government', lat: 33.75, lon: -84.39,
+      confidence: 0.9, source: 'deflock', sources: ['deflock'],
+    };
+    expect(c.sources).toEqual(['deflock']);
+  });
+
+  it('accepts multiple sources (merged record)', () => {
+    const c: Camera = {
+      id: 'y', type: 'alpr_government', lat: 33.75, lon: -84.39,
+      confidence: 0.95, source: 'deflock', sources: ['deflock', 'osm'],
+    };
+    expect(c.sources).toHaveLength(2);
+  });
+
+  it('still compiles without sources (v2 back-compat)', () => {
+    const c: Camera = {
+      id: 'z', type: 'alpr_government', lat: 33.75, lon: -84.39,
+      confidence: 0.9, source: 'seed',
+    };
+    expect(c.sources).toBeUndefined();
+  });
+});
