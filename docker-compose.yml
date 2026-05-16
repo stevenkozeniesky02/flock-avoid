@@ -1,0 +1,13 @@
+services:
+  valhalla:
+    image: ghcr.io/valhalla/valhalla:latest
+    container_name: flock-avoid-valhalla
+    ports:
+      - "8002:8002"
+    volumes:
+      - ./valhalla_tiles:/custom_files
+    environment:
+      - tile_urls=https://download.geofabrik.de/north-america/us/georgia-latest.osm.pbf
+      - server_threads=2
+      - use_tiles_ignore_pbf=True
+    restart: unless-stopped
