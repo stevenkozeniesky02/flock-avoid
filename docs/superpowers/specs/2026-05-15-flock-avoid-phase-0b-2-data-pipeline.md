@@ -330,7 +330,11 @@ Required prerequisites (handled in plan Task 0):
 
 Phase 0b-2 is done when:
 - A nightly Action runs and successfully publishes a new GitHub Release for ≥ 5 days in a row
-- Merged dataset contains ≥ 5,000 cameras (sanity check that we're not silently dropping most of the data)
+- Merged dataset contains ≥ 5,000 cameras AND OSM source contributes ≥ 1,000
+  (the OSM floor catches the 2026-05-16 silent-empty-Overpass failure mode
+  where a CONUS-wide query returned `{elements:[]}` and we published a
+  DeFlock-only dataset labeled "merged"; the pipeline's `minOsmCount` check
+  in `validate.ts` now enforces the floor and refuses to publish below it)
 - Manifest is published alongside the dataset and is parseable by the client
 - App boots against the live GitHub Release URL in production
 - `VITE_USE_LOCAL_SEED=true` falls back to the 12-camera Atlanta seed for offline dev
