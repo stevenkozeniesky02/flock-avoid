@@ -19,7 +19,7 @@ export async function startApp(): Promise<void> {
   const cameraStore = await CameraStore.loadFromUrl(CAMERA_DATASET_URL);
   const mapView = new MapView('map', ATLANTA_CENTER);
   mapView.renderCameras(cameraStore.all());
-  const router = new Router(new ValhallaClient(VALHALLA_URL), cameraStore);
+  const router = new Router(new ValhallaClient(VALHALLA_URL), cameraStore, VALHALLA_URL);
 
   renderProfilePicker(sidebar, (profile) => mountPlanner(sidebar, mapView, router, profile));
 }
