@@ -12,12 +12,32 @@ function isExternal(url: string): boolean {
 async function planRoute(page: import('@playwright/test').Page): Promise<void> {
   await page.locator('#map canvas').first().waitFor({ state: 'visible', timeout: 15_000 });
   await page.waitForTimeout(1500);
-  await page.getByText('Commuter').click();
-  await page.getByRole('button', { name: 'Set Start on map' }).click();
-  await page.locator('#map').click({ position: { x: 300, y: 220 } });
-  await page.getByRole('button', { name: 'Set End on map' }).click();
-  await page.locator('#map').click({ position: { x: 420, y: 320 } });
-  await page.getByRole('button', { name: 'Plan route' }).click();
+
+  // Dismiss welcome modal if present
+  await dismissWelcomeModalIfPresent(page);
+
+  // Activate planner via the search bar
+  await page.locator('[data-search-bar-activate]').click();
+
+  // Wait for the planner card to mount
+  await page.locator('[data-planner-card]').waitFor({ state: 'visible', timeout: 3_000 });
+
+  // First waypoint (origin)
+  const inputs = page.locator('[data-waypoint] input');
+  await inputs.first().click();
+  await inputs.first().fill('Krog Street Market, Atlanta');
+  // Wait past debounce + fetch
+  await page.locator('[role="option"]').first().waitFor({ state: 'visible', timeout: 5_000 });
+  await page.locator('[role="option"]').first().click();
+
+  // Second waypoint (destination)
+  await inputs.nth(1).click();
+  await inputs.nth(1).fill('Ponce City Market, Atlanta');
+  await page.locator('[role="option"]').first().waitFor({ state: 'visible', timeout: 5_000 });
+  await page.locator('[role="option"]').first().click();
+
+  // Plan route
+  await page.locator('button[data-action="plan"]').click();
   await page.waitForTimeout(4000);
 }
 
@@ -74,4 +94,20 @@ test('route request body does NOT carry user identifiers', async ({ page }) => {
     expect(parsed).not.toHaveProperty('device_id');
     expect(Object.keys(parsed).every((k) => !k.toLowerCase().includes('id') || k === 'locations')).toBe(true);
   }
+});
+
+test('Photon queries are same-origin (use /photon proxy, never direct)', async ({ page }) => {
+  const directPhoton: string[] = [];
+  page.on('request', (req) => {
+    if (req.url().startsWith('https://photon.komoot.io')) directPhoton.push(req.url());
+  });
+  await page.goto('/');
+  const dismiss = page.locator('button[data-action="welcome-dismiss"]');
+  if (await dismiss.count() > 0) await dismiss.click();
+  await page.locator('[data-search-bar-activate]').click();
+  await page.locator('[data-planner-card]').waitFor({ state: 'visible' });
+  await page.locator('[data-waypoint] input').first().fill('atlanta');
+  // Wait past debounce + fetch
+  await page.waitForTimeout(1200);
+  expect(directPhoton).toEqual([]);
 });
