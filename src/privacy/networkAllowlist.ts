@@ -10,6 +10,7 @@ export const ALLOWED_HOSTS: readonly string[] = Object.freeze([
   'github.com',
   'objects.githubusercontent.com',     // legacy GH release-asset CDN
   'release-assets.githubusercontent.com', // current GH release-asset CDN (verified 2026-05-16)
+  'photon.komoot.io',                  // Photon geocoder (Phase 0b-3b)
 ]);
 
 export function isAllowedUrl(url: string): boolean {
