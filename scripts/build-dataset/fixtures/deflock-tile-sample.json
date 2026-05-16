@@ -1,0 +1,7 @@
+[
+  { "id": "df-1", "lat": 33.7490, "lon": -84.3880, "tags": { "manufacturer": "Flock Safety", "direction": "90", "operator": "Atlanta PD" } },
+  { "id": "df-2", "lat": 33.7510, "lon": -84.3900, "tags": { "manufacturer": "flock safety" } },
+  { "id": "df-3", "lat": 33.7530, "lon": -84.3850, "tags": { "manufacturer": "Flock", "camera:direction": "270" } },
+  { "id": "df-4", "lat": 33.7505, "lon": -84.3865, "tags": { "manufacturer": "Motorola Vigilant" } },
+  { "id": "df-5", "lat": 33.7500, "lon": -84.3950, "tags": { "manufacturer": "Rekor" } }
+]

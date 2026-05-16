@@ -82,4 +82,45 @@ describe('CameraStore', () => {
       .rejects.toThrow(/invalid type/);
     fetchSpy.mockRestore();
   });
+
+  it('loadFromUrl synthesizes sources=[source] for v2 inputs (back-compat)', async () => {
+    const body = {
+      cameras: [
+        { id: 'r', type: 'alpr_government', lat: 33.75, lon: -84.39, confidence: 0.9, source: 'seed' },
+      ],
+    };
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify(body), { status: 200 }),
+    );
+    const loaded = await CameraStore.loadFromUrl('/data/x.json');
+    expect(loaded.all()[0]!.sources).toEqual(['seed']);
+    fetchSpy.mockRestore();
+  });
+
+  it('loadFromUrl preserves provided sources for v3 inputs', async () => {
+    const body = {
+      cameras: [
+        { id: 'm', type: 'alpr_government', lat: 33.75, lon: -84.39, confidence: 0.9, source: 'deflock', sources: ['deflock', 'osm'] },
+      ],
+    };
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify(body), { status: 200 }),
+    );
+    const loaded = await CameraStore.loadFromUrl('/data/x.json');
+    expect(loaded.all()[0]!.sources).toEqual(['deflock', 'osm']);
+    fetchSpy.mockRestore();
+  });
+
+  it('loadFromUrl rejects sources containing unknown values', async () => {
+    const body = {
+      cameras: [
+        { id: 'bad', type: 'alpr_government', lat: 33.75, lon: -84.39, confidence: 0.9, source: 'deflock', sources: ['deflock', 'malicious'] },
+      ],
+    };
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify(body), { status: 200 }),
+    );
+    await expect(CameraStore.loadFromUrl('/data/x.json')).rejects.toThrow(/invalid source/i);
+    fetchSpy.mockRestore();
+  });
 });

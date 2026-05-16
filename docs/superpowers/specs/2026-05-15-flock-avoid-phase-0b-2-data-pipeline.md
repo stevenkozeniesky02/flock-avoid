@@ -137,9 +137,17 @@ README.md                       # MODIFY: GH Actions status badge, dataset link
 
 ### 5.1 DeFlock
 
-- **Endpoint:** DeFlock's public dataset API. Plan-Task-0 includes a research step to probe the current API shape (DeFlock has revised it several times); the fetcher is then written against the confirmed shape. Pipeline fetches via JSON paging if needed.
-- **Fields used:** `lat`, `lon`, `type` (mapped from DeFlock's vendor field), `direction` (when present), `confidence` (DeFlock's verification status mapped to 0-1 float)
-- **License check at implementation time:** confirm DeFlock data is freely redistributable under ODbL or similar permissive terms. If not, surface as a blocker before implementing the pipeline.
+- **Architecture (confirmed 2026-05-16):** DeFlock publishes all camera data as static JSON tile files on Cloudflare R2 CDN — there is no live camera query API. The Fastify API at `api.deflock.me` handles only geocoding and contact forms.
+- **Fetch flow (two steps):**
+  1. GET `https://cdn.deflock.me/regions/index.json` → returns `{ tile_url, tile_size_degrees: 20, regions: ["lat/lon", ...], expiration_utc }`. Filter `regions` to tiles intersecting the US bounding box.
+  2. For each US tile: GET the URL from `tile_url` with `{lat}/{lon}` substituted → returns a JSON array of camera records.
+- **Record shape:** `{ id: number, lat: number, lon: number, tags: { manufacturer?: string, direction?: string, "camera:direction"?: string, operator?: string, brand?: string } }`. No top-level `type` field exists — type is inferred from `tags.manufacturer` / `tags.operator`.
+- **Fields used:** `lat`, `lon`, `tags.manufacturer` (mapped to our `CameraType` via vendor table in `normalize-deflock.ts`), `tags.direction` or `tags["camera:direction"]` (when present)
+- **Confidence:** DeFlock carries no numeric confidence field; assign fixed `confidence: 0.7` to all DeFlock records.
+- **Pagination:** None — each tile file is a self-contained array. Fetch all US tiles in parallel (≤5 concurrent requests as CDN courtesy).
+- **Auth required:** None. No API key, no rate-limit documentation found.
+- **License:** Camera data originates from OpenStreetMap (DeFlock is an OSM rendering layer); data license is **ODbL 1.0**. Compatible with our AGPL-3.0 + ODbL-data stance. Documented in `LICENSE-DATA.md`.
+- **Full details:** `scripts/build-dataset/DEFLOCK-ARCHITECTURE.md`
 
 ### 5.2 OSM Overpass
 
@@ -159,14 +167,19 @@ README.md                       # MODIFY: GH Actions status badge, dataset link
 
 Each source has its own normalizer that maps raw fields → `Camera`:
 
-**DeFlock vendor → our `CameraType`:**
-| DeFlock | Our type |
+**DeFlock `tags.manufacturer` → our `CameraType`:**
+
+The actual DeFlock field is `tags.manufacturer` (free-text OSM tag, case-insensitive). Match by case-insensitive substring.
+
+| `tags.manufacturer` value | Our type |
 |---|---|
-| `flock` | `alpr_government` (if municipal contract) or `alpr_private` (HOA / commercial) — falls back to `alpr_government` if context unclear |
-| `motorola_vigilant` | `alpr_government` |
-| `rekor` | `alpr_government` |
-| `genetec` | `alpr_government` |
-| (unknown) | `alpr_government` (conservative default) |
+| `"Flock Safety"` | `alpr_private` if `tags.operator` absent or is HOA/commercial entity; `alpr_government` if `tags.operator` is a government/law-enforcement entity |
+| `"Motorola Solutions"` / `"motorola"` | `alpr_government` |
+| `"Rekor"` | `alpr_government` |
+| `"Genetec"` | `alpr_government` |
+| `"Axon"` | `alpr_government` |
+| `"Leonardo"` | `alpr_government` |
+| `"Unknown"` / absent | `alpr_government` (conservative default) |
 
 **OSM tag combination → our `CameraType`:**
 | OSM tags | Our type |

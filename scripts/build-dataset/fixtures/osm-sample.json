@@ -1,0 +1,9 @@
+{
+  "version": 0.6,
+  "elements": [
+    { "type": "node", "id": 100, "lat": 33.74905, "lon": -84.38805, "tags": { "man_made": "surveillance", "surveillance:type": "public", "camera:type": "fixed" } },
+    { "type": "node", "id": 101, "lat": 33.7460, "lon": -84.3895, "tags": { "man_made": "surveillance" } },
+    { "type": "node", "id": 102, "lat": 33.7500, "lon": -84.3950, "tags": { "man_made": "surveillance", "surveillance:type": "red_light" } },
+    { "type": "node", "id": 103, "lat": 33.7440, "lon": -84.3840, "tags": { "man_made": "surveillance", "surveillance:type": "speed" } }
+  ]
+}

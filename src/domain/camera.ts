@@ -20,6 +20,7 @@ export interface Camera {
   readonly rangeMeters?: number;
   readonly fovDegrees?: number;
   readonly directionConfidence?: 'known' | 'inferred' | 'unknown';
+  readonly sources?: readonly ('deflock' | 'osm' | 'seed' | 'submission' | 'foia')[];
 }
 
 export function isCameraType(value: unknown): value is CameraType {

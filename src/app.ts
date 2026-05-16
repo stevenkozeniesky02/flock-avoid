@@ -6,12 +6,25 @@ import { RoutePlanner } from './ui/routePlanner';
 import { CameraStore } from './data/cameraStore';
 import { ValhallaClient } from './routing/valhallaClient';
 import { Router } from './routing/router';
+import { renderDatasetFreshness } from './ui/datasetFreshness';
+import { parseDatasetManifest } from './data/datasetManifest';
+import { isAllowedUrl } from './privacy/networkAllowlist';
 import type { GeoPoint } from './domain/route';
 import type { ThreatProfile } from './domain/threatProfile';
 
 const ATLANTA_CENTER: GeoPoint = { lat: 33.7500, lon: -84.3890 };
 const VALHALLA_URL = '/valhalla';
-const CAMERA_DATASET_URL = '/data/cameras-atlanta-seed.json';
+
+const LOCAL_SEED_URL = '/data/cameras-atlanta-seed.json';
+const RELEASE_DATASET_URL = 'https://github.com/stevenkozeniesky02/flock-avoid/releases/latest/download/cameras-us.json';
+
+const CAMERA_DATASET_URL = import.meta.env['VITE_USE_LOCAL_SEED'] === 'true'
+  ? LOCAL_SEED_URL
+  : RELEASE_DATASET_URL;
+
+const MANIFEST_URL = import.meta.env['VITE_USE_LOCAL_SEED'] === 'true'
+  ? null
+  : 'https://github.com/stevenkozeniesky02/flock-avoid/releases/latest/download/cameras-us.json.meta.json';
 
 export async function startApp(): Promise<void> {
   const sidebar = document.getElementById('sidebar');
@@ -19,6 +32,32 @@ export async function startApp(): Promise<void> {
 
   const cameraStore = await CameraStore.loadFromUrl(CAMERA_DATASET_URL);
   const mapView = new MapView('map', ATLANTA_CENTER);
+
+  let manifestGeneratedAt: string | null = null;
+  if (MANIFEST_URL) {
+    if (!isAllowedUrl(MANIFEST_URL)) {
+      throw new Error(`Manifest URL not in allowlist: ${MANIFEST_URL}`);
+    }
+    try {
+      const resp = await fetch(MANIFEST_URL);
+      if (resp.ok) {
+        const manifest = parseDatasetManifest(await resp.text());
+        manifestGeneratedAt = manifest.generatedAt;
+      }
+    } catch {
+      // best-effort; don't block app startup
+    }
+  }
+
+  if (manifestGeneratedAt) {
+    const sidebarHeader = document.createElement('div');
+    sidebar.insertBefore(sidebarHeader, sidebar.firstChild);
+    renderDatasetFreshness(sidebarHeader, {
+      generatedAt: manifestGeneratedAt,
+      onRefresh: () => { window.location.reload(); },
+    });
+  }
+
   mapView.renderCameras(cameraStore.all());
   const router = new Router(new ValhallaClient(VALHALLA_URL), cameraStore, VALHALLA_URL);
 
