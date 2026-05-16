@@ -1,23 +1,30 @@
 import 'maplibre-gl/dist/maplibre-gl.css';
+import './brand/tokens.css';
 import { MapView } from './ui/mapView';
-import { renderProfilePicker } from './ui/profilePicker';
-import { renderCustomProfileEditor } from './ui/customProfileEditor';
-import { RoutePlanner } from './ui/routePlanner';
+import { mountSearchBar } from './ui/searchBar';
+import { PlannerCard } from './ui/plannerCard';
+import { mountFab, mountFabStack } from './ui/fab';
+import { mountShowAllConesToggle } from './ui/showAllConesToggle';
+import { mountRouteSummaryCard } from './ui/routeSummaryCard';
 import { renderDatasetFreshness } from './ui/datasetFreshness';
 import { renderCameraDetailPopup } from './ui/cameraDetailPopup';
 import { mountWelcomeModal, shouldShowWelcomeModal } from './ui/welcomeModal';
 import { mountLoadingSkeleton, clearLoadingSkeleton } from './ui/loadingSkeleton';
 import { mountErrorBanner } from './ui/errorBanner';
-import { mountShowAllConesToggle } from './ui/showAllConesToggle';
-import { BottomSheet } from './ui/bottomSheet';
+import { LocationMarker } from './ui/locationMarker';
 import { CameraStore } from './data/cameraStore';
 import { ValhallaClient } from './routing/valhallaClient';
 import { Router } from './routing/router';
 import { parseDatasetManifest } from './data/datasetManifest';
 import { isAllowedUrl } from './privacy/networkAllowlist';
+import { PhotonClient } from './geocode/photonClient';
+import { zoomForType } from './geocode/zoomForType';
+import { LocationStore } from './location/locationStore';
+import { COMMUTER_PROFILE } from './domain/threatProfile';
 import type { GeoPoint } from './domain/route';
 import type { ThreatProfile } from './domain/threatProfile';
 import type { ResolvedCamera } from './data/resolvedCamera';
+import type { GeocodeResultType } from './geocode/geocodeTypes';
 
 const ATLANTA_CENTER: GeoPoint = { lat: 33.7500, lon: -84.3890 };
 const VALHALLA_URL = '/valhalla';
@@ -32,197 +39,186 @@ const CAMERA_DATASET_URL = import.meta.env['VITE_USE_LOCAL_SEED'] === 'true'
   : RELEASE_DATASET_URL;
 const MANIFEST_URL = import.meta.env['VITE_USE_LOCAL_SEED'] === 'true' ? null : MANIFEST_URL_LIVE;
 const ROUTE_CONE_RADIUS_M = 200;
+const DEFAULT_PROFILE: ThreatProfile = COMMUTER_PROFILE;
 
 export async function startApp(): Promise<void> {
-  const sidebarMount = document.getElementById('sidebar');
-  if (!sidebarMount) throw new Error('#sidebar missing');
-
-  // Welcome modal first — blocks further interaction until dismissed
   if (shouldShowWelcomeModal()) {
-    await new Promise<void>((resolve) => {
-      mountWelcomeModal(document.body, { onDismiss: resolve });
-    });
+    await new Promise<void>((resolve) => mountWelcomeModal(document.body, { onDismiss: resolve }));
   }
 
-  // Responsive container — everything else mounts inside its contentRoot
-  const bottomSheet = new BottomSheet(sidebarMount);
-  const sidebar = bottomSheet.contentRoot();
+  const mapEl = document.getElementById('map');
+  if (!mapEl) throw new Error('#map missing');
+  mapEl.style.position = mapEl.style.position || 'relative';
 
-  // Two-slot layout inside the bottom sheet: freshness on top (never cleared),
-  // the rest below (gets re-rendered when picker/planner mounts).
-  const freshnessSlot = document.createElement('div');
-  const appSlot = document.createElement('div');
-  sidebar.appendChild(freshnessSlot);
-  sidebar.appendChild(appSlot);
-
-  // Loading skeleton while the dataset loads
-  mountLoadingSkeleton(appSlot);
+  mountLoadingSkeleton(mapEl);
 
   let cameraStore: CameraStore;
   try {
     cameraStore = await CameraStore.loadFromUrl(CAMERA_DATASET_URL);
   } catch (err) {
-    clearLoadingSkeleton(appSlot);
-    mountErrorBanner(appSlot, err instanceof Error ? err.message : String(err));
+    clearLoadingSkeleton(mapEl);
+    mountErrorBanner(mapEl, err instanceof Error ? err.message : String(err));
     throw err;
   }
+
   const mapView = new MapView('map', ATLANTA_CENTER);
   mapView.renderCameras(cameraStore.all());
 
+  const photon = new PhotonClient('/photon');
+  const locationStore = new LocationStore();
+  new LocationMarker(mapEl, mapView.getProjector(), locationStore);
   const router = new Router(new ValhallaClient(VALHALLA_URL), cameraStore, VALHALLA_URL);
 
   // Camera pin tap → cone + popup
   let popupEl: HTMLElement | null = null;
-  let currentProfile: ThreatProfile | null = null;
+  const currentProfile: ThreatProfile = DEFAULT_PROFILE;
   let showAllPressed = false;
+
   mapView.onCameraPinClick((cam) => {
-    if (!currentProfile) return;
     mapView.setSelectedCameraCone(cam, currentProfile);
     if (popupEl) popupEl.remove();
     popupEl = document.createElement('div');
     popupEl.style.cssText = 'position:absolute;top:var(--space-3);left:var(--space-3);z-index:5';
-    document.getElementById('map')?.appendChild(popupEl);
+    mapEl.appendChild(popupEl);
     renderCameraDetailPopup(popupEl, cam, () => {
-      mapView.setSelectedCameraCone(null, currentProfile!);
-      if (popupEl) {
-        popupEl.remove();
-        popupEl = null;
-      }
+      mapView.setSelectedCameraCone(null, currentProfile);
+      if (popupEl) { popupEl.remove(); popupEl = null; }
     });
   });
+
   mapView.onMapBackgroundClick(() => {
-    if (popupEl) {
-      popupEl.remove();
-      popupEl = null;
-    }
+    if (popupEl) { popupEl.remove(); popupEl = null; }
   });
 
-  // Manifest fetch (best-effort) for the freshness banner
+  // Dataset freshness chip — best-effort manifest fetch
   let manifestGeneratedAt: string | null = null;
   if (MANIFEST_URL) {
-    // Relative URLs are same-origin by construction (Vite proxy / reverse proxy)
     const isRelative = MANIFEST_URL.startsWith('/') || MANIFEST_URL.startsWith('./');
     if (!isRelative && !isAllowedUrl(MANIFEST_URL)) {
       throw new Error(`Manifest URL not in allowlist: ${MANIFEST_URL}`);
     }
     try {
       const resp = await fetch(MANIFEST_URL);
-      if (resp.ok) {
-        const manifest = parseDatasetManifest(await resp.text());
-        manifestGeneratedAt = manifest.generatedAt;
-      }
-    } catch {
-      // best-effort — don't block app startup
-    }
+      if (resp.ok) manifestGeneratedAt = parseDatasetManifest(await resp.text()).generatedAt;
+    } catch { /* best-effort */ }
   }
 
-  clearLoadingSkeleton(appSlot);
+  clearLoadingSkeleton(mapEl);
 
-  // Freshness banner in its own slot — never wiped by app re-renders
   if (manifestGeneratedAt) {
-    renderDatasetFreshness(freshnessSlot, {
+    renderDatasetFreshness(mapEl, {
       generatedAt: manifestGeneratedAt,
-      onRefresh: () => {
-        window.location.reload();
-      },
+      onRefresh: () => window.location.reload(),
     });
   }
 
-  // Top-right map controls — "Show all cones" toggle
-  const mapEl = document.getElementById('map');
-  if (mapEl) {
-    const controls = document.createElement('div');
-    controls.style.cssText =
-      'position:absolute;top:var(--space-3);right:var(--space-3);z-index:5;' +
-      'display:flex;flex-direction:column;gap:var(--space-2)';
-    mapEl.appendChild(controls);
-    mountShowAllConesToggle(controls, {
-      onChange: (pressed) => {
-        showAllPressed = pressed;
-        if (!currentProfile) return;
-        mapView.setConesAll(pressed ? cameraStore.all() : [], currentProfile);
-      },
-    });
-  }
+  // FAB stack — cones toggle + recenter
+  const fabStack = mountFabStack(mapEl);
 
-  const onProfileSelected = (profile: ThreatProfile): void => {
-    currentProfile = profile;
-    // If "show all" is currently on, refresh cone sizing for the new profile
-    if (showAllPressed) {
-      mapView.setConesAll(cameraStore.all(), profile);
-    }
-  };
-
-  showPicker(appSlot, mapView, router, cameraStore, onProfileSelected);
-}
-
-function showPicker(
-  appSlot: HTMLElement,
-  mapView: MapView,
-  router: Router,
-  cameraStore: CameraStore,
-  onProfileSelected: (p: ThreatProfile) => void,
-): void {
-  renderProfilePicker(appSlot, {
-    onPresetPicked: (profile) => {
-      onProfileSelected(profile);
-      mountPlanner(appSlot, mapView, router, cameraStore, profile, onProfileSelected);
-    },
-    onCustomPicked: () => {
-      renderCustomProfileEditor(appSlot, {
-        onApply: (profile) => {
-          onProfileSelected(profile);
-          mountPlanner(appSlot, mapView, router, cameraStore, profile, onProfileSelected);
-        },
-      });
+  const conesHost = document.createElement('div');
+  fabStack.appendChild(conesHost);
+  mountShowAllConesToggle(conesHost, {
+    onChange: (pressed) => {
+      showAllPressed = pressed;
+      mapView.setConesAll(pressed ? cameraStore.all() : [], currentProfile);
     },
   });
-}
 
-function mountPlanner(
-  appSlot: HTMLElement,
-  mapView: MapView,
-  router: Router,
-  cameraStore: CameraStore,
-  profile: ThreatProfile,
-  onProfileSelected: (p: ThreatProfile) => void,
-  initial?: { start: GeoPoint; end: GeoPoint },
-): void {
-  let lastStart: GeoPoint | null = initial?.start ?? null;
-  let lastEnd: GeoPoint | null = initial?.end ?? null;
-  const planner = new RoutePlanner(
-    appSlot,
-    {
-      onPlanRequested: async (start, end) => {
-        lastStart = start;
-        lastEnd = end;
-        const cmp = await router.compareRoutes(start, end, profile);
+  const recenterHost = document.createElement('div');
+  fabStack.appendChild(recenterHost);
+  mountFab(recenterHost, {
+    ariaLabel: 'Recenter on my location',
+    icon:
+      '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/></svg>',
+    onClick: () => {
+      const pos = locationStore.lastPosition();
+      if (pos) mapView.flyTo({ lat: pos.lat, lon: pos.lon }, 15);
+      else locationStore.start();
+    },
+  });
+
+  // Wayfinding chrome: search bar ↔ planner card swap
+  let plannerCard: PlannerCard | null = null;
+  const plannerHost = document.createElement('div');
+  mapEl.appendChild(plannerHost);
+
+  const mountIdleSearchBar = (): void => {
+    plannerHost.innerHTML = '';
+    mountSearchBar(plannerHost, {
+      onActivate: () => mountPlanner(),
+      onUseLocation: () => {
+        locationStore.start();
+        mountPlanner();
+      },
+    });
+  };
+
+  const mountPlanner = (): void => {
+    plannerHost.innerHTML = '';
+    plannerCard = new PlannerCard(plannerHost, {
+      photonClient: photon,
+      locationStore,
+      onClose: () => {
+        if (plannerCard) { plannerCard.destroy(); plannerCard = null; }
+        mountIdleSearchBar();
+      },
+      onCompare: async (start, end) => {
+        const cmp = await router.compareRoutes(start, end, currentProfile);
         if (!cmp.degradation) {
           mapView.renderComparison(cmp);
-          const combinedPolyline = [...cmp.shortest.polyline, ...cmp.private.polyline];
-          const nearby = camerasNearPolyline(cameraStore.all(), combinedPolyline);
-          mapView.setConesAlongRoute(nearby, profile);
+          const combined = [...cmp.shortest.polyline, ...cmp.private.polyline];
+          const nearby = camerasNearPolyline(cameraStore.all(), combined);
+          mapView.setConesAlongRoute(nearby, currentProfile);
+
+          // surveillanceScore is the per-route exposure value from RouteResult
+          const shortestSensors = camerasNearPolyline(cameraStore.all(), cmp.shortest.polyline).length;
+          const privateSensors = camerasNearPolyline(cameraStore.all(), cmp.private.polyline).length;
+          mountRouteSummaryCard(mapEl, {
+            comparison: {
+              shortest: {
+                distanceMeters: cmp.shortest.distanceMeters,
+                exposure: cmp.shortest.surveillanceScore,
+                sensorsAlong: shortestSensors,
+              },
+              private: {
+                distanceMeters: cmp.private.distanceMeters,
+                exposure: cmp.private.surveillanceScore,
+                sensorsAlong: privateSensors,
+              },
+            },
+            originLabel: `${start.lat.toFixed(3)}, ${start.lon.toFixed(3)}`,
+            destinationLabel: `${end.lat.toFixed(3)}, ${end.lon.toFixed(3)}`,
+            profileName: String(currentProfile.preset),
+            onSelect: () => { /* future: re-style selected polyline */ },
+            onStart: () => { /* sub-project B: turn-by-turn */ },
+            onDetails: () => { /* future */ },
+          });
+
+          // Update show-all cones with new profile if toggled on
+          if (showAllPressed) {
+            mapView.setConesAll(cameraStore.all(), currentProfile);
+          }
         } else {
-          mapView.setConesAlongRoute([], profile);
+          mapView.setConesAlongRoute([], currentProfile);
         }
         return cmp;
       },
-      onProfileSwap: (newProfile) => {
-        onProfileSelected(newProfile);
-        if (lastStart && lastEnd) {
-          mountPlanner(appSlot, mapView, router, cameraStore, newProfile, onProfileSelected, {
-            start: lastStart,
-            end: lastEnd,
-          });
-        } else {
-          mountPlanner(appSlot, mapView, router, cameraStore, newProfile, onProfileSelected);
-        }
-      },
-    },
-    profile,
-    initial,
-  );
-  mapView.onClick((p) => planner.handleMapClick(p));
+    });
+  };
+
+  // Map-tap when planner is open → fill next empty waypoint
+  mapView.onClick((p) => {
+    if (!plannerCard) return;
+    plannerCard.setOrigin({ lat: p.lat, lon: p.lon, label: `${p.lat.toFixed(4)}, ${p.lon.toFixed(4)}` });
+  });
+
+  mountIdleSearchBar();
+
+  // Geocode result selection → mapView.flyTo
+  document.addEventListener('flockavoid:geocode-selected', (e) => {
+    const detail = (e as CustomEvent<{ lat: number; lon: number; type: GeocodeResultType }>).detail;
+    mapView.flyTo({ lat: detail.lat, lon: detail.lon }, zoomForType(detail.type));
+  });
 }
 
 function camerasNearPolyline(
@@ -239,4 +235,3 @@ function camerasNearPolyline(
   }
   return cameras.filter((c) => hits.has(c.id));
 }
-
