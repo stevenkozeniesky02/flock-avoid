@@ -7,6 +7,7 @@ import { renderDatasetFreshness } from './ui/datasetFreshness';
 import { renderCameraDetailPopup } from './ui/cameraDetailPopup';
 import { mountWelcomeModal, shouldShowWelcomeModal } from './ui/welcomeModal';
 import { mountLoadingSkeleton, clearLoadingSkeleton } from './ui/loadingSkeleton';
+import { mountErrorBanner } from './ui/errorBanner';
 import { mountShowAllConesToggle } from './ui/showAllConesToggle';
 import { BottomSheet } from './ui/bottomSheet';
 import { CameraStore } from './data/cameraStore';
@@ -46,10 +47,24 @@ export async function startApp(): Promise<void> {
   const bottomSheet = new BottomSheet(sidebarMount);
   const sidebar = bottomSheet.contentRoot();
 
-  // Loading skeleton while the dataset loads
-  mountLoadingSkeleton(sidebar);
+  // Two-slot layout inside the bottom sheet: freshness on top (never cleared),
+  // the rest below (gets re-rendered when picker/planner mounts).
+  const freshnessSlot = document.createElement('div');
+  const appSlot = document.createElement('div');
+  sidebar.appendChild(freshnessSlot);
+  sidebar.appendChild(appSlot);
 
-  const cameraStore = await CameraStore.loadFromUrl(CAMERA_DATASET_URL);
+  // Loading skeleton while the dataset loads
+  mountLoadingSkeleton(appSlot);
+
+  let cameraStore: CameraStore;
+  try {
+    cameraStore = await CameraStore.loadFromUrl(CAMERA_DATASET_URL);
+  } catch (err) {
+    clearLoadingSkeleton(appSlot);
+    mountErrorBanner(appSlot, err instanceof Error ? err.message : String(err));
+    throw err;
+  }
   const mapView = new MapView('map', ATLANTA_CENTER);
   mapView.renderCameras(cameraStore.all());
 
@@ -74,6 +89,12 @@ export async function startApp(): Promise<void> {
       }
     });
   });
+  mapView.onMapBackgroundClick(() => {
+    if (popupEl) {
+      popupEl.remove();
+      popupEl = null;
+    }
+  });
 
   // Manifest fetch (best-effort) for the freshness banner
   let manifestGeneratedAt: string | null = null;
@@ -92,12 +113,10 @@ export async function startApp(): Promise<void> {
     }
   }
 
-  clearLoadingSkeleton(sidebar);
+  clearLoadingSkeleton(appSlot);
 
-  // Freshness banner at the top of the sidebar
+  // Freshness banner in its own slot — never wiped by app re-renders
   if (manifestGeneratedAt) {
-    const freshnessSlot = document.createElement('div');
-    sidebar.insertBefore(freshnessSlot, sidebar.firstChild);
     renderDatasetFreshness(freshnessSlot, {
       generatedAt: manifestGeneratedAt,
       onRefresh: () => {
@@ -131,28 +150,26 @@ export async function startApp(): Promise<void> {
     }
   };
 
-  showPicker(sidebar, mapView, router, cameraStore, onProfileSelected);
+  showPicker(appSlot, mapView, router, cameraStore, onProfileSelected);
 }
 
 function showPicker(
-  sidebar: HTMLElement,
+  appSlot: HTMLElement,
   mapView: MapView,
   router: Router,
   cameraStore: CameraStore,
   onProfileSelected: (p: ThreatProfile) => void,
 ): void {
-  removeChildrenAfterFirst(sidebar);
-  renderProfilePicker(sidebar, {
+  renderProfilePicker(appSlot, {
     onPresetPicked: (profile) => {
       onProfileSelected(profile);
-      mountPlanner(sidebar, mapView, router, cameraStore, profile, onProfileSelected);
+      mountPlanner(appSlot, mapView, router, cameraStore, profile, onProfileSelected);
     },
     onCustomPicked: () => {
-      removeChildrenAfterFirst(sidebar);
-      renderCustomProfileEditor(sidebar, {
+      renderCustomProfileEditor(appSlot, {
         onApply: (profile) => {
           onProfileSelected(profile);
-          mountPlanner(sidebar, mapView, router, cameraStore, profile, onProfileSelected);
+          mountPlanner(appSlot, mapView, router, cameraStore, profile, onProfileSelected);
         },
       });
     },
@@ -160,7 +177,7 @@ function showPicker(
 }
 
 function mountPlanner(
-  sidebar: HTMLElement,
+  appSlot: HTMLElement,
   mapView: MapView,
   router: Router,
   cameraStore: CameraStore,
@@ -168,11 +185,10 @@ function mountPlanner(
   onProfileSelected: (p: ThreatProfile) => void,
   initial?: { start: GeoPoint; end: GeoPoint },
 ): void {
-  removeChildrenAfterFirst(sidebar);
   let lastStart: GeoPoint | null = initial?.start ?? null;
   let lastEnd: GeoPoint | null = initial?.end ?? null;
   const planner = new RoutePlanner(
-    sidebar,
+    appSlot,
     {
       onPlanRequested: async (start, end) => {
         lastStart = start;
@@ -191,12 +207,12 @@ function mountPlanner(
       onProfileSwap: (newProfile) => {
         onProfileSelected(newProfile);
         if (lastStart && lastEnd) {
-          mountPlanner(sidebar, mapView, router, cameraStore, newProfile, onProfileSelected, {
+          mountPlanner(appSlot, mapView, router, cameraStore, newProfile, onProfileSelected, {
             start: lastStart,
             end: lastEnd,
           });
         } else {
-          mountPlanner(sidebar, mapView, router, cameraStore, newProfile, onProfileSelected);
+          mountPlanner(appSlot, mapView, router, cameraStore, newProfile, onProfileSelected);
         }
       },
     },
@@ -221,6 +237,3 @@ function camerasNearPolyline(
   return cameras.filter((c) => hits.has(c.id));
 }
 
-function removeChildrenAfterFirst(el: HTMLElement): void {
-  while (el.childNodes.length > 1) el.removeChild(el.lastChild!);
-}

@@ -38,6 +38,7 @@ export class MapView {
   private readonly map: MapLibreMap;
   private clickListener: ((p: GeoPoint) => void) | null = null;
   private cameraPinClickListener: ((cam: ResolvedCamera) => void) | null = null;
+  private backgroundClickListener: (() => void) | null = null;
   private cameraIndex = new Map<string, ResolvedCamera>();
 
   constructor(containerId: string, center: GeoPoint) {
@@ -57,8 +58,9 @@ export class MapView {
       if (features.length === 0) {
         const src = this.map.getSource(CONES_SELECTED_SOURCE) as maplibregl.GeoJSONSource | undefined;
         if (src) src.setData({ type: 'FeatureCollection', features: [] });
+        if (this.backgroundClickListener) this.backgroundClickListener();
+        if (this.clickListener) this.clickListener({ lat: e.lngLat.lat, lon: e.lngLat.lng });
       }
-      if (this.clickListener) this.clickListener({ lat: e.lngLat.lat, lon: e.lngLat.lng });
     });
   }
 
@@ -68,6 +70,10 @@ export class MapView {
 
   onCameraPinClick(listener: (camera: ResolvedCamera) => void): void {
     this.cameraPinClickListener = listener;
+  }
+
+  onMapBackgroundClick(listener: () => void): void {
+    this.backgroundClickListener = listener;
   }
 
   getCameraById(id: string): ResolvedCamera | undefined {
