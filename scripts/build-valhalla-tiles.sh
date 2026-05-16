@@ -1,16 +1,32 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# One-time build of Valhalla tiles for Georgia OSM extract.
-# Downloads ~250MB PBF, builds tiles into ./valhalla_tiles/ (~5-15 min first run).
-# Run this before `npm run valhalla:up` on a fresh checkout.
+# Brings up Valhalla and waits for tile build + server readiness.
+# First run: downloads ~250MB Georgia OSM PBF and builds tiles in ./valhalla_tiles/ (~5-15 min).
+# Subsequent runs: detects existing tiles and starts the server quickly.
 
+cd "$(dirname "$0")/.."
 mkdir -p valhalla_tiles
-docker run --rm -t \
-  -v "$(pwd)/valhalla_tiles:/custom_files" \
-  -e tile_urls=https://download.geofabrik.de/north-america/us/georgia-latest.osm.pbf \
-  -e use_tiles_ignore_pbf=False \
-  -e force_rebuild=True \
-  ghcr.io/valhalla/valhalla:latest
 
-echo "Valhalla tiles built. Run 'npm run valhalla:up' to start the server."
+echo "Starting Valhalla container (tiles will be built on first run)..."
+docker compose up -d
+
+echo "Waiting for Valhalla to be ready on http://localhost:8002 ..."
+echo "(First run downloads ~250MB and builds tiles — this can take 10+ minutes.)"
+echo "Tail logs in another terminal with: docker logs -f flock-avoid-valhalla"
+echo ""
+
+for i in $(seq 1 180); do
+  if curl -sf -o /dev/null http://localhost:8002/status; then
+    echo "Valhalla is ready."
+    curl -s http://localhost:8002/status
+    echo ""
+    exit 0
+  fi
+  printf "."
+  sleep 10
+done
+
+echo ""
+echo "Timed out waiting for Valhalla after 30 minutes. Check 'docker logs flock-avoid-valhalla'."
+exit 1
