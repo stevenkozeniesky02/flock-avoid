@@ -9,7 +9,7 @@ import type { GeoPoint } from './domain/route';
 import type { ThreatProfile } from './domain/threatProfile';
 
 const ATLANTA_CENTER: GeoPoint = { lat: 33.7500, lon: -84.3890 };
-const VALHALLA_URL = 'http://localhost:8002';
+const VALHALLA_URL = '/valhalla';
 const CAMERA_DATASET_URL = '/data/cameras-atlanta-seed.json';
 
 export async function startApp(): Promise<void> {

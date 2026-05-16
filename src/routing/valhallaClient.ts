@@ -11,7 +11,8 @@ interface ValhallaRouteResponse {
 
 export class ValhallaClient {
   constructor(private readonly baseUrl: string) {
-    if (!isAllowedUrl(`${baseUrl}/status`)) {
+    const isRelative = baseUrl.startsWith('/') || baseUrl.startsWith('./');
+    if (!isRelative && !isAllowedUrl(`${baseUrl}/status`)) {
       throw new Error(`Valhalla baseUrl not in allowlist: ${baseUrl}`);
     }
   }

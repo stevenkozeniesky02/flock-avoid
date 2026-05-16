@@ -9,4 +9,8 @@ describe('ValhallaClient (unit)', () => {
   it('accepts allowlisted baseUrl', () => {
     expect(() => new ValhallaClient('http://localhost:8002')).not.toThrow();
   });
+
+  it('accepts a relative baseUrl (same-origin via dev proxy or reverse proxy)', () => {
+    expect(() => new ValhallaClient('/valhalla')).not.toThrow();
+  });
 });
