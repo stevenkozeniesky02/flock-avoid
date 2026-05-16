@@ -1,5 +1,5 @@
 import maplibregl, { type Map as MapLibreMap, type StyleSpecification } from 'maplibre-gl';
-import type { Camera } from '../domain/camera';
+import type { ResolvedCamera } from '../data/resolvedCamera';
 import type { GeoPoint, RouteComparison } from '../domain/route';
 
 const OSM_STYLE: StyleSpecification = {
@@ -39,13 +39,30 @@ export class MapView {
     this.clickListener = listener;
   }
 
-  renderCameras(cameras: readonly Camera[]): void {
+  renderCameras(cameras: readonly ResolvedCamera[]): void {
     for (const c of cameras) {
-      const el = document.createElement('div');
-      el.style.cssText =
-        'width:10px;height:10px;border-radius:50%;background:#d32f2f;border:2px solid #fff;box-shadow:0 0 2px rgba(0,0,0,.5)';
-      el.title = `${c.type} (${c.id})`;
-      new maplibregl.Marker({ element: el }).setLngLat([c.lon, c.lat]).addTo(this.map);
+      const wrap = document.createElement('div');
+      wrap.style.cssText = 'position:relative;width:14px;height:14px';
+
+      const dot = document.createElement('div');
+      dot.style.cssText =
+        'width:10px;height:10px;border-radius:50%;background:#d32f2f;border:2px solid #fff;' +
+        'box-shadow:0 0 2px rgba(0,0,0,.5);position:absolute;left:2px;top:2px';
+      wrap.appendChild(dot);
+
+      if (c.directionConfidence === 'unknown') {
+        const badge = document.createElement('div');
+        badge.textContent = '?';
+        badge.title = 'Direction unknown — contribute corrected data to DeFlock/OSM';
+        badge.style.cssText =
+          'position:absolute;top:-6px;right:-6px;width:12px;height:12px;border-radius:50%;' +
+          'background:#f9a825;color:#fff;font-size:10px;font-weight:700;line-height:12px;' +
+          'text-align:center;border:1px solid #fff';
+        wrap.appendChild(badge);
+      }
+
+      wrap.title = `${c.type} (${c.id})${c.directionConfidence === 'unknown' ? ' — direction unknown' : ''}`;
+      new maplibregl.Marker({ element: wrap }).setLngLat([c.lon, c.lat]).addTo(this.map);
     }
   }
 
