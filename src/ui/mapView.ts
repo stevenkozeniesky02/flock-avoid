@@ -40,6 +40,8 @@ export class MapView {
   private cameraPinClickListener: ((cam: ResolvedCamera) => void) | null = null;
   private backgroundClickListener: (() => void) | null = null;
   private cameraIndex = new Map<string, ResolvedCamera>();
+  private startMarker: maplibregl.Marker | null = null;
+  private endMarker: maplibregl.Marker | null = null;
 
   constructor(containerId: string, center: GeoPoint) {
     this.map = new maplibregl.Map({
@@ -220,8 +222,12 @@ export class MapView {
     if (!cmp.degradation) {
       this.addRouteLayer('private', cmp.private.polyline, '#15803d', false);
     }
-    new maplibregl.Marker({ color: '#3a5fff' }).setLngLat([cmp.start.lon, cmp.start.lat]).addTo(this.map);
-    new maplibregl.Marker({ color: '#3a5fff' }).setLngLat([cmp.end.lon, cmp.end.lat]).addTo(this.map);
+    this.startMarker = new maplibregl.Marker({ color: '#3a5fff' })
+      .setLngLat([cmp.start.lon, cmp.start.lat])
+      .addTo(this.map);
+    this.endMarker = new maplibregl.Marker({ color: '#3a5fff' })
+      .setLngLat([cmp.end.lon, cmp.end.lat])
+      .addTo(this.map);
   }
 
   /** Render a single camera's cone overlay (used when a pin is tapped). Clears when called with null. */
@@ -287,6 +293,14 @@ export class MapView {
   }
 
   private clearRoutes(): void {
+    if (this.startMarker) {
+      this.startMarker.remove();
+      this.startMarker = null;
+    }
+    if (this.endMarker) {
+      this.endMarker.remove();
+      this.endMarker = null;
+    }
     for (const id of ['shortest', 'private']) {
       const layerId = `route-${id}-line`;
       const sourceId = `route-${id}`;
