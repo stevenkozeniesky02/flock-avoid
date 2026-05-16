@@ -6,6 +6,8 @@ import { RoutePlanner } from './ui/routePlanner';
 import { CameraStore } from './data/cameraStore';
 import { ValhallaClient } from './routing/valhallaClient';
 import { Router } from './routing/router';
+import { renderDatasetFreshness } from './ui/datasetFreshness';
+import { parseDatasetManifest } from './data/datasetManifest';
 import type { GeoPoint } from './domain/route';
 import type { ThreatProfile } from './domain/threatProfile';
 
@@ -19,12 +21,39 @@ const CAMERA_DATASET_URL = import.meta.env['VITE_USE_LOCAL_SEED'] === 'true'
   ? LOCAL_SEED_URL
   : RELEASE_DATASET_URL;
 
+const MANIFEST_URL = import.meta.env['VITE_USE_LOCAL_SEED'] === 'true'
+  ? null
+  : 'https://github.com/stevenkozeniesky02/flock-avoid/releases/latest/download/cameras-us.json.meta.json';
+
 export async function startApp(): Promise<void> {
   const sidebar = document.getElementById('sidebar');
   if (!sidebar) throw new Error('#sidebar missing');
 
   const cameraStore = await CameraStore.loadFromUrl(CAMERA_DATASET_URL);
   const mapView = new MapView('map', ATLANTA_CENTER);
+
+  let manifestGeneratedAt: string | null = null;
+  if (MANIFEST_URL) {
+    try {
+      const resp = await fetch(MANIFEST_URL);
+      if (resp.ok) {
+        const manifest = parseDatasetManifest(await resp.text());
+        manifestGeneratedAt = manifest.generatedAt;
+      }
+    } catch {
+      // best-effort; don't block app startup
+    }
+  }
+
+  if (manifestGeneratedAt) {
+    const sidebarHeader = document.createElement('div');
+    sidebar.insertBefore(sidebarHeader, sidebar.firstChild);
+    renderDatasetFreshness(sidebarHeader, {
+      generatedAt: manifestGeneratedAt,
+      onRefresh: () => { window.location.reload(); },
+    });
+  }
+
   mapView.renderCameras(cameraStore.all());
   const router = new Router(new ValhallaClient(VALHALLA_URL), cameraStore, VALHALLA_URL);
 
