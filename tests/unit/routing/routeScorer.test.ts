@@ -36,4 +36,28 @@ describe('scoreRoute', () => {
     expect(result.camerasSeen).toBe(0);
     expect(result.surveillanceScore).toBe(0);
   });
+
+  it('uses the max visibility factor when polyline approaches then passes close to a camera', () => {
+    const cam: Camera = {
+      id: 'closer-later',
+      type: 'alpr_government',
+      lat: 33.7500,
+      lon: -84.3890,
+      confidence: 0.9,
+      source: 'seed',
+    };
+    // First point ~133m south of cam, second point ~9m east — second is much closer
+    const approachThenClose: readonly GeoPoint[] = [
+      { lat: 33.7488, lon: -84.3890 }, // ~133m south of cam
+      { lat: 33.7500, lon: -84.3889 }, // ~9m east of cam
+    ];
+    const farFirstOnly: readonly GeoPoint[] = [
+      { lat: 33.7488, lon: -84.3890 }, // only the far point
+    ];
+    const store = new CameraStore([cam]);
+    const closer = scoreRoute(approachThenClose, store, COMMUTER_PROFILE).surveillanceScore;
+    const farOnly = scoreRoute(farFirstOnly, store, COMMUTER_PROFILE).surveillanceScore;
+    // The closer route must score strictly higher than just-the-far-point.
+    expect(closer).toBeGreaterThan(farOnly);
+  });
 });
