@@ -22,7 +22,7 @@ function parseCamera(raw: unknown, index: number): Camera {
   if (typeof r['source'] !== 'string' || !VALID_SOURCES.has(r['source'])) {
     throw new Error(`camera ${r['id']} has invalid source: ${String(r['source'])}`);
   }
-  const base: Camera = {
+  const base = {
     id: r['id'],
     type: r['type'],
     lat: r['lat'],
@@ -30,8 +30,7 @@ function parseCamera(raw: unknown, index: number): Camera {
     confidence: r['confidence'],
     source: r['source'] as Camera['source'],
   };
-  const out: Camera = {
-    ...base,
+  const optional: Partial<Camera> = {
     ...(typeof r['direction'] === 'number' ? { direction: r['direction'] } : {}),
     ...(typeof r['rangeMeters'] === 'number' ? { rangeMeters: r['rangeMeters'] } : {}),
     ...(typeof r['fovDegrees'] === 'number' ? { fovDegrees: r['fovDegrees'] } : {}),
@@ -41,7 +40,19 @@ function parseCamera(raw: unknown, index: number): Camera {
       ? { directionConfidence: r['directionConfidence'] }
       : {}),
   };
-  return out;
+  // v3: sources array. v2 back-compat: synthesize from primary source.
+  let sources: readonly Camera['source'][];
+  if (Array.isArray(r['sources'])) {
+    for (const s of r['sources']) {
+      if (typeof s !== 'string' || !VALID_SOURCES.has(s)) {
+        throw new Error(`camera ${r['id']} has invalid source in sources array: ${String(s)}`);
+      }
+    }
+    sources = (r['sources'] as Camera['source'][]).slice();
+  } else {
+    sources = [base.source];
+  }
+  return { ...base, ...optional, sources };
 }
 
 export class CameraStore {
