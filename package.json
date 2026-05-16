@@ -14,7 +14,9 @@
     "format": "prettier --write 'src/**/*.ts' 'tests/**/*.ts'",
     "valhalla:up": "docker compose up -d",
     "valhalla:down": "docker compose down",
-    "valhalla:build-tiles": "./scripts/build-valhalla-tiles.sh"
+    "valhalla:build-tiles": "./scripts/build-valhalla-tiles.sh",
+    "build:dataset": "tsx scripts/build-dataset/run.ts",
+    "build:dataset:fixture": "DEFLOCK_INDEX_FIXTURE=scripts/build-dataset/fixtures/deflock-index.json DEFLOCK_TILE_FIXTURE=scripts/build-dataset/fixtures/deflock-tile-sample.json OSM_FIXTURE=scripts/build-dataset/fixtures/osm-sample.json OUT_DIR=./dist-dataset tsx scripts/build-dataset/run.ts"
   },
   "dependencies": {
     "maplibre-gl": "^4.7.0"
