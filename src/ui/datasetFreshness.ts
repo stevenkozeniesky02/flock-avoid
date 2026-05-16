@@ -10,8 +10,10 @@ export function renderDatasetFreshness(
   container.innerHTML = '';
   const wrapper = document.createElement('div');
   wrapper.style.cssText =
-    'display:flex;justify-content:space-between;align-items:center;padding:6px 8px;' +
-    'font-size:11px;color:#666;border-bottom:1px solid #eee;margin-bottom:8px';
+    'display:flex;justify-content:space-between;align-items:center;' +
+    'padding:var(--space-2) var(--space-3);font-size:var(--font-size-xs);' +
+    'color:var(--color-brand-ink-muted);border-bottom:1px solid var(--color-brand-border);' +
+    'margin-bottom:var(--space-2);font-family:var(--font-family-sans)';
 
   const label = document.createElement('span');
   label.textContent = `Data: ${describeAge(props.generatedAt)}`;
@@ -22,8 +24,9 @@ export function renderDatasetFreshness(
   btn.dataset['action'] = 'refresh-dataset';
   btn.textContent = 'refresh';
   btn.style.cssText =
-    'padding:2px 6px;font:inherit;font-size:11px;background:none;border:0;' +
-    'color:#1976d2;cursor:pointer;text-decoration:underline';
+    'padding:0 var(--space-1);font:inherit;font-size:var(--font-size-xs);' +
+    'background:none;border:0;color:var(--color-brand-primary);' +
+    'cursor:pointer;text-decoration:underline';
   btn.addEventListener('click', props.onRefresh);
   wrapper.appendChild(btn);
 
