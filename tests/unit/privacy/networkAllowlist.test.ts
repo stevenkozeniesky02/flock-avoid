@@ -19,4 +19,9 @@ describe('networkAllowlist', () => {
     expect(isAllowedUrl('https://evil.example.com/track')).toBe(false);
     expect(isAllowedUrl('https://google-analytics.com/collect')).toBe(false);
   });
+
+  it('includes the GitHub release CDN hosts', () => {
+    expect(ALLOWED_HOSTS).toContain('github.com');
+    expect(ALLOWED_HOSTS).toContain('objects.githubusercontent.com');
+  });
 });

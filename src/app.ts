@@ -11,7 +11,13 @@ import type { ThreatProfile } from './domain/threatProfile';
 
 const ATLANTA_CENTER: GeoPoint = { lat: 33.7500, lon: -84.3890 };
 const VALHALLA_URL = '/valhalla';
-const CAMERA_DATASET_URL = '/data/cameras-atlanta-seed.json';
+
+const LOCAL_SEED_URL = '/data/cameras-atlanta-seed.json';
+const RELEASE_DATASET_URL = 'https://github.com/stevenkozeniesky02/flock-avoid/releases/latest/download/cameras-us.json';
+
+const CAMERA_DATASET_URL = import.meta.env['VITE_USE_LOCAL_SEED'] === 'true'
+  ? LOCAL_SEED_URL
+  : RELEASE_DATASET_URL;
 
 export async function startApp(): Promise<void> {
   const sidebar = document.getElementById('sidebar');

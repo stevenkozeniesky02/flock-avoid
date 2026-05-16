@@ -7,6 +7,8 @@ export const ALLOWED_HOSTS: readonly string[] = Object.freeze([
   'a.tile.openstreetmap.org',
   'b.tile.openstreetmap.org',
   'c.tile.openstreetmap.org',
+  'github.com',
+  'objects.githubusercontent.com',
 ]);
 
 export function isAllowedUrl(url: string): boolean {
