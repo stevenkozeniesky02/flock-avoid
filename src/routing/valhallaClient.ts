@@ -28,7 +28,7 @@ export class ValhallaClient {
       ],
       costing: 'auto',
       directions_options: { units: 'kilometers' },
-      exclude_polygons: excludePolygons.map((p) => p.map(([lon, lat]) => [lon, lat])),
+      exclude_polygons: excludePolygons.map((p) => p.map((point) => [...point])),
     };
 
     const resp = await fetch(`${this.baseUrl}/route`, {

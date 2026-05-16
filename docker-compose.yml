@@ -3,7 +3,7 @@ services:
     image: ghcr.io/gis-ops/docker-valhalla/valhalla:latest
     container_name: flock-avoid-valhalla
     ports:
-      - "8002:8002"
+      - "127.0.0.1:8002:8002"
     volumes:
       - ./valhalla_tiles:/custom_files
     environment:

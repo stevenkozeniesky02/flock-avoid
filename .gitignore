@@ -2,5 +2,6 @@ node_modules/
 valhalla_tiles/
 dist/
 coverage/
+test-results/
 .DS_Store
 .superpowers/
