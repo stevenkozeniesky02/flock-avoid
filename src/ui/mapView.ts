@@ -314,4 +314,22 @@ export class MapView {
       if (this.map.getSource(sourceId)) this.map.removeSource(sourceId);
     }
   }
+
+  /** Animate the map to a new center at a given zoom. */
+  flyTo(center: GeoPoint, zoom: number): void {
+    this.map.flyTo({ center: [center.lon, center.lat], zoom, essential: true });
+  }
+
+  /** Expose a projector for DOM overlays (LocationMarker). */
+  getProjector(): {
+    project(ll: [number, number]): { x: number; y: number };
+    on(ev: 'move' | 'zoom', cb: () => void): void;
+    off(ev: 'move' | 'zoom', cb: () => void): void;
+  } {
+    return {
+      project: (ll) => this.map.project({ lng: ll[0], lat: ll[1] }),
+      on: (ev, cb) => this.map.on(ev, cb),
+      off: (ev, cb) => this.map.off(ev, cb),
+    };
+  }
 }

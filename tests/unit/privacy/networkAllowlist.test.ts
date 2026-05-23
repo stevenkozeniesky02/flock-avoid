@@ -25,4 +25,12 @@ describe('networkAllowlist', () => {
     expect(ALLOWED_HOSTS).toContain('objects.githubusercontent.com');
     expect(ALLOWED_HOSTS).toContain('release-assets.githubusercontent.com');
   });
+
+  it('includes photon.komoot.io for geocoding', () => {
+    expect(ALLOWED_HOSTS).toContain('photon.komoot.io');
+  });
+
+  it('accepts a Photon search URL', () => {
+    expect(isAllowedUrl('https://photon.komoot.io/api?q=krog')).toBe(true);
+  });
 });

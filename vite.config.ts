@@ -20,6 +20,13 @@ export default defineConfig({
           path.replace(/^\/dataset/, '/stevenkozeniesky02/flock-avoid/releases/latest/download'),
         followRedirects: true,
       },
+      // Photon public geocoder. Same same-origin pattern as /valhalla and /dataset:
+      // browser only talks to its own origin; the proxy hops to photon.komoot.io.
+      '/photon': {
+        target: 'https://photon.komoot.io',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/photon/, ''),
+      },
     },
   },
   build: { target: 'es2022', sourcemap: true },
