@@ -13,8 +13,11 @@
     "lint": "eslint src tests",
     "format": "prettier --write 'src/**/*.ts' 'tests/**/*.ts'",
     "valhalla:up": "docker compose up -d",
+    "valhalla:up:full-us": "VALHALLA_TILE_URLS=https://download.geofabrik.de/north-america/us-latest.osm.pbf VALHALLA_TILES_DIR=./valhalla_tiles_us VALHALLA_CONTAINER_NAME=flock-avoid-valhalla-us docker compose up -d",
     "valhalla:down": "docker compose down",
+    "valhalla:down:full-us": "VALHALLA_CONTAINER_NAME=flock-avoid-valhalla-us VALHALLA_TILES_DIR=./valhalla_tiles_us docker compose down",
     "valhalla:build-tiles": "./scripts/build-valhalla-tiles.sh",
+    "valhalla:build-tiles:us": "./scripts/build-valhalla-tiles-us.sh",
     "build:dataset": "tsx scripts/build-dataset/run.ts",
     "build:dataset:fixture": "DEFLOCK_INDEX_FIXTURE=scripts/build-dataset/fixtures/deflock-index.json DEFLOCK_TILE_FIXTURE=scripts/build-dataset/fixtures/deflock-tile-sample.json OSM_FIXTURE=scripts/build-dataset/fixtures/osm-sample.json OUT_DIR=./dist-dataset tsx scripts/build-dataset/run.ts"
   },
