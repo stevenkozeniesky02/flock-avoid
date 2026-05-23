@@ -7,6 +7,8 @@ import { mountFab, mountFabStack } from './ui/fab';
 import { mountShowAllConesToggle } from './ui/showAllConesToggle';
 import { mountRouteSummaryCard } from './ui/routeSummaryCard';
 import { DirectionsPanel } from './ui/directionsPanel';
+import { NavigationBanner } from './ui/navigationBanner';
+import { NavigationSession } from './nav/navigationSession';
 import { renderDatasetFreshness } from './ui/datasetFreshness';
 import { renderCameraDetailPopup } from './ui/cameraDetailPopup';
 import { mountWelcomeModal, shouldShowWelcomeModal } from './ui/welcomeModal';
@@ -191,6 +193,41 @@ export async function startApp(): Promise<void> {
 
           let selectedRoute: 'shortest' | 'private' = 'private';
           let directionsPanel: DirectionsPanel | null = null;
+          let navSession: NavigationSession | null = null;
+          let navBanner: NavigationBanner | null = null;
+          let activeComparison = cmp;
+
+          const endLiveNavigation = (): void => {
+            if (navSession) { navSession.destroy(); navSession = null; }
+            if (navBanner) { navBanner.destroy(); navBanner = null; }
+            mountSummary();
+          };
+
+          // Live navigation is plain follow-the-route + reroute-on-user-drift.
+          // The only signal driving reroute decisions is the user's own GeoPosition,
+          // surfaced via LocationStore — there is no pursuer/adversary input pathway.
+          // See docs/superpowers/specs/2026-05-22-flock-avoid-phase-0b-3b-live-nav.md §1.1.
+          const beginLiveNavigation = (kind: 'shortest' | 'private'): void => {
+            const summary = mapEl.querySelector('[data-route-summary-card]');
+            if (summary) summary.remove();
+            if (directionsPanel) { directionsPanel.destroy(); directionsPanel = null; }
+            locationStore.start();
+            navBanner = new NavigationBanner(mapEl, { onEnd: endLiveNavigation });
+            navSession = new NavigationSession({
+              initialComparison: activeComparison,
+              initialRouteKind: kind,
+              threatProfile: currentProfile,
+              router,
+              locationStore,
+              onUpdate: (view) => { if (navBanner) navBanner.update(view); },
+              onRouteChanged: (newCmp) => {
+                activeComparison = newCmp;
+                if (!newCmp.degradation) mapView.renderComparison(newCmp);
+              },
+              onError: (msg) => { if (navBanner) navBanner.showError(msg); },
+            });
+            navSession.start();
+          };
 
           const mountSummary = (): void => {
             mountRouteSummaryCard(mapEl, {
@@ -202,12 +239,12 @@ export async function startApp(): Promise<void> {
                 selectedRoute = kind;
                 if (directionsPanel) directionsPanel.setRoute(kind);
               },
-              onStart: () => { /* live navigation is out of scope (hard product line) */ },
+              onStart: () => beginLiveNavigation(selectedRoute),
               onDetails: () => {
                 const existingSummary = mapEl.querySelector('[data-route-summary-card]');
                 if (existingSummary) existingSummary.remove();
                 directionsPanel = new DirectionsPanel(mapEl, {
-                  comparison: cmp,
+                  comparison: activeComparison,
                   initialSelectedRoute: selectedRoute,
                   originLabel,
                   destinationLabel,
