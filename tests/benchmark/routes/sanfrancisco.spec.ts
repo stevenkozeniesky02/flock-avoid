@@ -4,7 +4,7 @@ import { planRoute, type BenchmarkRoute } from '../helpers/benchmarkHarness';
 test.beforeAll(() => {
   test.skip(
     true,
-    'San Francisco benchmark scaffolded but not runnable until: (1) app supports cross-city centering, (2) full-US Valhalla container is available. See Phase 0b-3 plan.',
+    'San Francisco benchmark scaffolded but not yet runnable. Prereqs: (1) benchmark harness supports cross-city centering (search-and-flyTo before pixel click) — tracked in a follow-up sub-project; (2) Valhalla running with continental-US tiles per docs/VALHALLA.md. Sub-project C delivers (2) as configuration; (1) remains.',
   );
 });
 
