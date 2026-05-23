@@ -143,3 +143,9 @@ test('Esc ends live navigation', async ({ page }) => {
   await expect(banner).toHaveCount(0);
   await expect(page.locator('[data-route-summary-card]')).toBeVisible();
 });
+
+// Note: the body-shape invariant for /valhalla/route POSTs is enforced by
+// tests/privacy/networkInvariants.spec.ts on the same Router + ValhallaClient
+// code path that live navigation re-uses for re-routes. Adding a duplicate
+// here would require an unmocked Valhalla request, which this spec
+// intentionally avoids — see the addInitScript above.
