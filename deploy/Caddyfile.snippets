@@ -1,0 +1,64 @@
+# deploy/Caddyfile.snippets — reusable header + CSP snippets imported by
+# deploy/Caddyfile.
+#
+# The security headers here are the production enforcement of Flock-Avoid's
+# same-origin posture. The CSP forbids any new browser-facing host by default;
+# the only cross-origin allowance is the OSM raster tile hosts already in
+# src/privacy/networkAllowlist.ts.
+#
+# A vitest unit test (tests/unit/deploy/csp.test.ts) pins every directive in
+# this file. Edits that weaken the posture (adding 'unsafe-inline' to
+# script-src, allowing a new host in connect-src, etc.) will fail the test
+# before they can ship.
+
+(security_headers) {
+	header {
+		# HSTS: two-year max-age, all subdomains. Long enough that realistic
+		# repeat visits keep the policy fresh. Preload-list submission is a
+		# one-way ratchet and is the operator's deliberate choice; not enabled
+		# here by default.
+		Strict-Transport-Security "max-age=63072000; includeSubDomains"
+
+		# The production teeth on the same-origin posture. Every directive is
+		# justified in docs/superpowers/specs/2026-05-22-flock-avoid-phase-0b-3b-deploy.md §4.3.
+		Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://a.tile.openstreetmap.org https://b.tile.openstreetmap.org https://c.tile.openstreetmap.org; connect-src 'self' https://a.tile.openstreetmap.org https://b.tile.openstreetmap.org https://c.tile.openstreetmap.org; font-src 'self'; worker-src 'self' blob:; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests"
+
+		# MIME-sniffing-based XSS defense.
+		X-Content-Type-Options "nosniff"
+
+		# Maximum privacy: do not leak the source URL when the user follows a
+		# link off this origin (or when the browser fires a referer for any
+		# subresource).
+		Referrer-Policy "no-referrer"
+
+		# Legacy companion to CSP frame-ancestors. Defense-in-depth for older
+		# user agents.
+		X-Frame-Options "DENY"
+
+		# Block sensor + payment APIs site-wide as defense-in-depth. The app
+		# uses navigator.geolocation in the "use my location" flow; the
+		# browser still prompts for it because the page itself requests the
+		# permission. The () denylist applies to iframes (we forbid framing
+		# anyway) and to any future cross-origin embed.
+		# interest-cohort + browsing-topics opt out of advertising-cohort
+		# tagging.
+		Permissions-Policy "geolocation=(), camera=(), microphone=(), payment=(), usb=(), accelerometer=(), gyroscope=(), magnetometer=(), interest-cohort=(), browsing-topics=()"
+
+		# Tab-group isolation. Cheap hardening with no UX cost.
+		Cross-Origin-Opener-Policy "same-origin"
+
+		# Strip Caddy's version identifier from responses. Not a security
+		# control on its own, but reduces the attacker's reconnaissance
+		# surface.
+		-Server
+	}
+}
+
+# Operator-supplied TLS certificates (alternate to ACME). Uncomment and set
+# FLOCK_TLS_CERT_PATH + FLOCK_TLS_KEY_PATH in deploy/.env.prod when running
+# behind a corporate CA, in an air-gapped environment, or any other context
+# where Caddy's automatic HTTPS is not appropriate.
+#
+# (operator_tls) {
+# 	tls {$FLOCK_TLS_CERT_PATH} {$FLOCK_TLS_KEY_PATH}
+# }
