@@ -4,14 +4,14 @@ import { planRoute, type BenchmarkRoute } from '../helpers/benchmarkHarness';
 test.beforeAll(() => {
   test.skip(
     true,
-    'Memphis benchmark scaffolded but not runnable until: (1) app supports cross-city centering, (2) full-US Valhalla container is available. See Phase 0b-3 plan.',
+    'Memphis benchmark scaffolded but not runnable until the dev Valhalla container has Tennessee tiles. See Sub-project C (full-US Valhalla).',
   );
 });
 
 const ROUTES: readonly BenchmarkRoute[] = [
-  { name: 'downtown-crossing',  startClick: { x: 300, y: 220 }, endClick: { x: 420, y: 320 } },
-  { name: 'commute-to-suburb',  startClick: { x: 320, y: 250 }, endClick: { x: 550, y: 180 } },
-  { name: 'sensitive-site-adj', startClick: { x: 260, y: 280 }, endClick: { x: 400, y: 360 } },
+  { name: 'downtown-crossing',  origin: 'Beale Street, Memphis',                 destination: 'AutoZone Park, Memphis' },
+  { name: 'commute-to-suburb',  origin: 'Downtown Memphis, Memphis',             destination: 'Germantown, Tennessee' },
+  { name: 'sensitive-site-adj', origin: 'National Civil Rights Museum, Memphis', destination: 'Graceland, Memphis' },
 ];
 
 for (const route of ROUTES) {
