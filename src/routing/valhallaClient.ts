@@ -1,11 +1,12 @@
 import type { GeoPoint, RouteResult } from '../domain/route';
 import type { ExclusionPolygon } from './conePolygon.types';
 import { isAllowedUrl } from '../privacy/networkAllowlist';
+import { parseManeuvers, type ValhallaLeg } from './maneuverParser';
 
 interface ValhallaRouteResponse {
   trip: {
     summary: { length: number; time: number };
-    legs: Array<{ shape: string }>;
+    legs: ValhallaLeg[];
   };
 }
 
@@ -42,12 +43,14 @@ export class ValhallaClient {
     }
     const data = (await resp.json()) as ValhallaRouteResponse;
     const polyline = data.trip.legs.flatMap((leg) => decodePolyline6(leg.shape));
+    const maneuvers = parseManeuvers(data.trip.legs);
     return {
       polyline,
       distanceMeters: Math.round(data.trip.summary.length * 1000),
       durationSeconds: Math.round(data.trip.summary.time),
       camerasOnRoute: 0,
       surveillanceScore: 0,
+      maneuvers,
     };
   }
 }

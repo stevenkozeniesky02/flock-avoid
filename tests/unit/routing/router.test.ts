@@ -14,6 +14,7 @@ function makeStubValhalla() {
       durationSeconds: 0,
       camerasOnRoute: 0,
       surveillanceScore: 0,
+      maneuvers: [],
     }),
   } as unknown as import('../../../src/routing/valhallaClient').ValhallaClient;
 }

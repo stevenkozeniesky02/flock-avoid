@@ -49,4 +49,17 @@ describe('ValhallaClient (integration — requires local Valhalla)', () => {
     );
     expect(result.polyline.length).toBeGreaterThan(2);
   }, 15_000);
+
+  it('returns maneuvers with depart/arrive bookends', async () => {
+    if (!valhallaReady) return;
+    const result = await client.route(
+      { lat: 33.7490, lon: -84.3880 },
+      { lat: 33.7700, lon: -84.3600 },
+      [],
+    );
+    expect(result.maneuvers.length).toBeGreaterThan(1);
+    expect(result.maneuvers[0]!.kind).toBe('depart');
+    expect(result.maneuvers[result.maneuvers.length - 1]!.kind).toBe('arrive');
+    expect(result.maneuvers[0]!.rawValhallaType).toBeGreaterThan(0);
+  }, 15_000);
 });
