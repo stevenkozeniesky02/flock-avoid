@@ -165,7 +165,7 @@ export async function startApp(): Promise<void> {
         if (plannerCard) { plannerCard.destroy(); plannerCard = null; }
         mountIdleSearchBar();
       },
-      onCompare: async (start, end) => {
+      onCompare: async (start, end, labels) => {
         const cmp = await router.compareRoutes(start, end, currentProfile);
         if (!cmp.degradation) {
           mapView.renderComparison(cmp);
@@ -176,8 +176,8 @@ export async function startApp(): Promise<void> {
           // surveillanceScore is the per-route exposure value from RouteResult
           const shortestSensors = camerasNearPolyline(cameraStore.all(), cmp.shortest.polyline).length;
           const privateSensors = camerasNearPolyline(cameraStore.all(), cmp.private.polyline).length;
-          const originLabel = `${start.lat.toFixed(3)}, ${start.lon.toFixed(3)}`;
-          const destinationLabel = `${end.lat.toFixed(3)}, ${end.lon.toFixed(3)}`;
+          const originLabel = labels.origin;
+          const destinationLabel = labels.destination;
           const summaryComparison = {
             shortest: {
               distanceMeters: cmp.shortest.distanceMeters,

@@ -34,6 +34,10 @@ const CONES_ROUTE_LAYER = 'cones-along-route-fill';
 const CONES_ALL_SOURCE = 'cones-all';
 const CONES_ALL_LAYER = 'cones-all-fill';
 
+// Zoom floor for showing cluster-count labels (matches the prior symbol-layer
+// filter `['>=', ['zoom'], 5]`).
+const CLUSTER_LABEL_MIN_ZOOM = 5;
+
 export class MapView {
   private readonly map: MapLibreMap;
   private clickListener: ((p: GeoPoint) => void) | null = null;
@@ -42,6 +46,11 @@ export class MapView {
   private cameraIndex = new Map<string, ResolvedCamera>();
   private startMarker: maplibregl.Marker | null = null;
   private endMarker: maplibregl.Marker | null = null;
+  // DOM cluster-count badges. Replaces the prior symbol layer that required a
+  // glyphs PBF endpoint. Keeping this in-process is the privacy-safe choice:
+  // no glyph URL, no /glyphs proxy, no new external host. Cluster IDs are
+  // not stable across zoom, so we replace the whole set on each settle event.
+  private clusterLabelMarkers: maplibregl.Marker[] = [];
 
   constructor(containerId: string, center: GeoPoint) {
     this.map = new maplibregl.Map({
@@ -127,18 +136,15 @@ export class MapView {
           'circle-stroke-width': 2,
         },
       });
-      this.map.addLayer({
-        id: CLUSTER_COUNT_LAYER,
-        type: 'symbol',
-        source: CAMERA_SOURCE,
-        filter: ['all', ['has', 'point_count'], ['>=', ['zoom'], 5]],
-        layout: {
-          'text-field': '{point_count_abbreviated}',
-          'text-size': ['interpolate', ['linear'], ['zoom'], 5, 9, 10, 12],
-          'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold'],
-        },
-        paint: { 'text-color': '#ffffff' },
-      });
+      // Cluster-count labels are rendered as HTML markers (see
+      // updateClusterLabels). A symbol layer with `text-field` would require
+      // a `glyphs` URL on the map style and either bundled glyph PBFs or a
+      // proxy — both heavier than a few DOM nodes, and the proxy path risks
+      // the privacy allowlist drifting if not maintained carefully.
+      // NOTE: CLUSTER_COUNT_LAYER is intentionally NOT added as a style
+      // layer; the constant is kept for legacy callers and as a stable
+      // identifier for tests.
+      void CLUSTER_COUNT_LAYER;
       this.map.addLayer({
         id: POINT_LAYER,
         type: 'circle',
@@ -213,6 +219,19 @@ export class MapView {
       this.map.on('mouseleave', CLUSTER_LAYER, () => { this.map.getCanvas().style.cursor = ''; });
       this.map.on('mouseenter', POINT_LAYER, () => { this.map.getCanvas().style.cursor = 'pointer'; });
       this.map.on('mouseleave', POINT_LAYER, () => { this.map.getCanvas().style.cursor = ''; });
+
+      // Cluster-count HTML labels — rebuild on each settle event. Keeping
+      // these as DOM markers (not a symbol layer) avoids the MapLibre glyphs
+      // requirement and preserves the privacy invariant (no glyph URL, no
+      // external host).
+      const refresh = (): void => this.updateClusterLabels();
+      this.map.on('idle', refresh);
+      this.map.on('moveend', refresh);
+      this.map.on('zoomend', refresh);
+      this.map.on('sourcedata', (e) => {
+        if (e.sourceId === CAMERA_SOURCE && e.isSourceLoaded) refresh();
+      });
+      refresh();
     };
 
     if (this.map.isStyleLoaded()) {
@@ -296,6 +315,57 @@ export class MapView {
         ...(dashed ? { 'line-dasharray': [2, 2] } : {}),
       },
     });
+  }
+
+  /**
+   * Rebuild the DOM-marker cluster-count badges from currently rendered
+   * cluster features. Privacy-safe replacement for the MapLibre symbol
+   * layer (which would have required a `glyphs` URL).
+   *
+   * Exposed for tests that need to force a refresh after seeding camera
+   * data — production callers do not need to invoke this directly.
+   */
+  refreshClusterLabels(): void {
+    this.updateClusterLabels();
+  }
+
+  /**
+   * Read-only count of currently rendered cluster-count labels — used by
+   * the regression test that pins down the old glyphs bug.
+   */
+  getClusterLabelCount(): number {
+    return this.clusterLabelMarkers.length;
+  }
+
+  private updateClusterLabels(): void {
+    for (const m of this.clusterLabelMarkers) m.remove();
+    this.clusterLabelMarkers = [];
+
+    if (this.map.getZoom() < CLUSTER_LABEL_MIN_ZOOM) return;
+    if (!this.map.getLayer(CLUSTER_LAYER)) return;
+
+    const features = this.map.queryRenderedFeatures(undefined, { layers: [CLUSTER_LAYER] });
+    for (const f of features) {
+      const props = f.properties as { point_count_abbreviated?: string; point_count?: number } | null;
+      if (props == null) continue;
+      const label = props.point_count_abbreviated ?? (props.point_count != null ? String(props.point_count) : '');
+      if (label === '') continue;
+      if (f.geometry.type !== 'Point') continue;
+      const coords = f.geometry.coordinates as [number, number];
+
+      const el = document.createElement('div');
+      el.dataset['clusterCount'] = 'true';
+      el.style.cssText =
+        'pointer-events:none;color:#ffffff;font-weight:700;font-size:11px;' +
+        'font-family:Geist,system-ui,-apple-system,sans-serif;' +
+        'line-height:1;text-shadow:0 1px 2px rgba(0,0,0,0.6);user-select:none';
+      el.textContent = label;
+
+      const marker = new maplibregl.Marker({ element: el, anchor: 'center' })
+        .setLngLat(coords)
+        .addTo(this.map);
+      this.clusterLabelMarkers.push(marker);
+    }
   }
 
   private clearRoutes(): void {

@@ -70,7 +70,7 @@ describe('PlannerCard', () => {
     expect((fields[1] as HTMLInputElement).value).toBe('A');
   });
 
-  it('clicking plan with both waypoints calls onCompare with coords', async () => {
+  it('clicking plan with both waypoints calls onCompare with coords and labels', async () => {
     const c = document.getElementById('c')!;
     const onCompare = vi.fn().mockResolvedValue({ shortest: { polyline: [] }, private: { polyline: [] } });
     const planner = new PlannerCard(c, {
@@ -79,11 +79,39 @@ describe('PlannerCard', () => {
       onCompare,
       onClose: vi.fn(),
     });
-    planner.setOrigin({ lat: 1, lon: 2, label: 'A' });
-    planner.setDestination({ lat: 3, lon: 4, label: 'B' });
+    planner.setOrigin({ lat: 1, lon: 2, label: 'Krog Street Market' });
+    planner.setDestination({ lat: 3, lon: 4, label: 'Georgia Aquarium' });
     (c.querySelector('button[data-action="plan"]') as HTMLButtonElement).click();
     await Promise.resolve();
-    expect(onCompare).toHaveBeenCalledWith({ lat: 1, lon: 2 }, { lat: 3, lon: 4 });
+    expect(onCompare).toHaveBeenCalledWith(
+      { lat: 1, lon: 2 },
+      { lat: 3, lon: 4 },
+      { origin: 'Krog Street Market', destination: 'Georgia Aquarium' },
+    );
+  });
+
+  // Regression for the v0.2 bug where the route summary card title and
+  // directions panel header showed raw "lat, lon" instead of the place
+  // names the user selected from Photon. The labels must travel with the
+  // GeoPoints all the way from the planner's waypoint state.
+  it('passes through Photon-selected place names verbatim (no coord fallback)', async () => {
+    const c = document.getElementById('c')!;
+    const onCompare = vi.fn().mockResolvedValue(undefined);
+    const planner = new PlannerCard(c, {
+      photonClient: new StubClient() as never,
+      locationStore: new LocationStore(),
+      onCompare,
+      onClose: vi.fn(),
+    });
+    planner.setOrigin({ lat: 33.7548, lon: -84.3669, label: 'Krog Street Market, Atlanta' });
+    planner.setDestination({ lat: 33.7634, lon: -84.3949, label: 'Georgia Aquarium, Atlanta' });
+    (c.querySelector('button[data-action="plan"]') as HTMLButtonElement).click();
+    await Promise.resolve();
+    const labels = onCompare.mock.calls[0]?.[2] as { origin: string; destination: string };
+    expect(labels.origin).toBe('Krog Street Market, Atlanta');
+    expect(labels.destination).toBe('Georgia Aquarium, Atlanta');
+    expect(labels.origin).not.toMatch(/^\d+\.\d+, -?\d+\.\d+$/);
+    expect(labels.destination).not.toMatch(/^\d+\.\d+, -?\d+\.\d+$/);
   });
 
   it('use-location button on origin is disabled until LocationStore has a fix', () => {
