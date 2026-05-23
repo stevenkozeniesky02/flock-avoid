@@ -1,0 +1,95 @@
+# deploy/Caddyfile — Flock-Avoid production reverse proxy.
+#
+# What this file does:
+#   1. Terminates HTTPS via Caddy's automatic HTTPS (Let's Encrypt by default).
+#   2. Serves the built SPA from /srv/dist (populated by the web-builder
+#      service in deploy/docker-compose.prod.yml).
+#   3. Reverse-proxies /valhalla/*, /photon/*, /dataset/* to mirror the Vite
+#      dev proxy 1:1. The browser only ever talks to its own origin (plus the
+#      OSM tile hosts already in src/privacy/networkAllowlist.ts).
+#   4. Sets the security headers defined in Caddyfile.snippets.
+#   5. Sets Cache-Control headers tuned for the SW lifecycle (sw.js + manifest
+#      no-store; hashed /assets/* immutable; everything else no-cache).
+#   6. Logs in a privacy-redacted format (no query strings, no User-Agent, no
+#      Cookie, no Authorization).
+#
+# The structure is pinned by tests/unit/deploy/caddyfile.test.ts.
+{
+	# ACME contact email. If FLOCK_ACME_EMAIL is unset, the placeholder
+	# below (which uses the RFC 2606 reserved .invalid TLD) is what Caddy
+	# sees; Let's Encrypt will refuse to issue against it, and Caddy falls
+	# back to ZeroSSL (which does not require an email). Set
+	# FLOCK_ACME_EMAIL in deploy/.env.prod to use Let's Encrypt with
+	# proper expiry notifications.
+	email {$FLOCK_ACME_EMAIL:admin@change-me.invalid}
+}
+
+import Caddyfile.snippets
+
+{$FLOCK_DOMAIN:localhost} {
+	root * /srv/dist
+	encode gzip zstd
+
+	import security_headers
+
+	log {
+		output stdout
+		format filter {
+			wrap json
+			fields {
+				query delete
+				request>headers>User-Agent delete
+				request>headers>Cookie delete
+				request>headers>Authorization delete
+			}
+		}
+	}
+
+	# /sw.js — Cache-Control: no-store style; explicit Content-Type. A SW
+	# stuck in an intermediate cache cannot be updated; no-store mitigates.
+	@swfile path /sw.js
+	header @swfile Cache-Control "no-cache, no-store, must-revalidate"
+	header @swfile Content-Type "application/javascript; charset=utf-8"
+
+	# /manifest.webmanifest — short cache; correct MIME (Caddy's default mime
+	# DB does not always include .webmanifest).
+	@manifest path /manifest.webmanifest
+	header @manifest Cache-Control "no-cache, must-revalidate"
+	header @manifest Content-Type "application/manifest+json"
+
+	# Vite emits content-hashed filenames under /assets/. They never need
+	# revalidation; immutable removes even the conditional round-trip.
+	@assets path /assets/*
+	header @assets Cache-Control "public, max-age=31536000, immutable"
+
+	# Reverse proxies — these mirror vite.config.ts's dev proxy 1:1.
+	# Same paths the browser uses, same upstream rewrites, same Host
+	# behavior. The browser never sees these upstream hosts.
+	handle_path /valhalla/* {
+		reverse_proxy valhalla:8002
+	}
+
+	handle_path /photon/* {
+		reverse_proxy https://photon.komoot.io {
+			header_up Host photon.komoot.io
+			header_up -X-Forwarded-For
+			header_up -X-Real-IP
+		}
+	}
+
+	handle_path /dataset/* {
+		rewrite * /stevenkozeniesky02/flock-avoid/releases/latest/download{path}
+		reverse_proxy https://github.com {
+			header_up Host github.com
+			header_up -X-Forwarded-For
+			header_up -X-Real-IP
+		}
+	}
+
+	# SPA fallback — every other path tries the file first, then falls back
+	# to index.html for client-side routing.
+	handle {
+		try_files {path} /index.html
+		file_server
+	}
+}

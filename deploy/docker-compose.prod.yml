@@ -1,0 +1,95 @@
+# deploy/docker-compose.prod.yml — Flock-Avoid production stack.
+#
+# This file is intended to be MERGED with the repo-root docker-compose.yml,
+# not used standalone. The root compose defines the valhalla service; this
+# file adds the prod-specific services (web-builder, caddy), the production
+# network, and a small overlay on valhalla so caddy can reach it by name.
+#
+# Bring-up:
+#   cp deploy/.env.prod.example deploy/.env.prod
+#   # edit deploy/.env.prod with the operator's domain + ACME email
+#   docker compose \
+#     -f docker-compose.yml \
+#     -f deploy/docker-compose.prod.yml \
+#     --env-file deploy/.env.prod \
+#     up -d
+#
+# The host-side build of the SPA does NOT need Node installed on the host;
+# the web-builder service is hermetic to the docker stack.
+
+services:
+  # Overlay: keep the dev compose's valhalla service definition intact and
+  # only add the production bridge network so caddy can resolve
+  # `valhalla:8002` from inside the stack. The 127.0.0.1:8002 host port from
+  # the root compose is preserved (loopback only — useful for operator
+  # curl-debugging; not reachable from the public internet).
+  valhalla:
+    networks:
+      - default
+      - flock-net
+
+  # One-shot hermetic SPA build. Copies the source into a writable layer,
+  # runs `npm ci && npm run build`, copies dist/ into the flock-dist named
+  # volume, exits clean. Re-run with `docker compose ... up --build
+  # web-builder` after a `git pull` to refresh the served bundle.
+  web-builder:
+    image: node:20-alpine
+    container_name: flock-avoid-web-builder
+    working_dir: /build
+    volumes:
+      # Paths resolve relative to the merge project directory (the repo
+      # root, where docker-compose.yml lives) — not to deploy/. This is
+      # why ./ here points at the SPA source root rather than ./deploy/.
+      - ./:/src:ro
+      - flock-dist:/out
+    command: >-
+      sh -c "
+      cp -a /src/. /build/ &&
+      cd /build &&
+      npm ci &&
+      npm run build &&
+      rm -rf /out/* &&
+      cp -a /build/dist/. /out/
+      "
+    networks:
+      - flock-net
+    restart: "no"
+
+  # The public-facing reverse proxy. Serves dist/ at /, reverse-proxies the
+  # three same-origin paths, terminates HTTPS via ACME.
+  caddy:
+    image: caddy:2-alpine
+    container_name: flock-avoid-caddy
+    depends_on:
+      web-builder:
+        condition: service_completed_successfully
+      valhalla:
+        condition: service_started
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      # Paths resolve relative to the merge project directory (the repo
+      # root, where docker-compose.yml lives).
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./deploy/Caddyfile.snippets:/etc/caddy/Caddyfile.snippets:ro
+      - flock-dist:/srv/dist:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    environment:
+      FLOCK_DOMAIN: "${FLOCK_DOMAIN:-localhost}"
+      FLOCK_ACME_EMAIL: "${FLOCK_ACME_EMAIL:-}"
+      FLOCK_AUTO_HTTPS: "${FLOCK_AUTO_HTTPS:-on}"
+    networks:
+      - flock-net
+    restart: unless-stopped
+
+volumes:
+  flock-dist:
+  caddy-data:
+  caddy-config:
+
+networks:
+  flock-net:
+    driver: bridge

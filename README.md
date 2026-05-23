@@ -28,6 +28,10 @@ Open http://localhost:5173. The app fetches the latest published camera dataset 
 
 To stop Valhalla: `npm run valhalla:down`.
 
+## Deploying
+
+For the production deployment (Caddy reverse proxy + HTTPS + the strict CSP that enforces the same-origin posture in the browser), see [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md). The deploy is a Docker Compose overlay (`deploy/docker-compose.prod.yml`) that adds Caddy + a hermetic SPA builder to the existing Valhalla service — no Node on the host required.
+
 ### Offline development (no internet for dataset)
 
 Set the local-seed flag to use the bundled 12-camera Atlanta seed instead of fetching the live dataset:
