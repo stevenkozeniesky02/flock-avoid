@@ -4,10 +4,17 @@ import type { PhotonClient } from '../geocode/photonClient';
 import type { LocationStore } from '../location/locationStore';
 import { SearchInput } from './searchInput';
 
+/** Place labels (from Photon, or a fallback like "lat, lon" for use-my-location).
+ *  These are presentation-only — the geometry is carried by the GeoPoint args. */
+export interface PlannerLabels {
+  readonly origin: string;
+  readonly destination: string;
+}
+
 export interface PlannerCardCallbacks {
   readonly photonClient: PhotonClient;
   readonly locationStore: LocationStore;
-  readonly onCompare: (start: GeoPoint, end: GeoPoint) => Promise<unknown>;
+  readonly onCompare: (start: GeoPoint, end: GeoPoint, labels: PlannerLabels) => Promise<unknown>;
   readonly onClose: () => void;
 }
 
@@ -196,6 +203,7 @@ export class PlannerCard {
     await this.cb.onCompare(
       { lat: this.origin.lat, lon: this.origin.lon },
       { lat: this.destination.lat, lon: this.destination.lon },
+      { origin: this.origin.label, destination: this.destination.label },
     );
   }
 }
