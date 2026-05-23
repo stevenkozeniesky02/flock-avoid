@@ -110,3 +110,37 @@ test('Photon queries are same-origin (use /photon proxy, never direct)', async (
   await page.waitForTimeout(1200);
   expect(directPhoton).toEqual([]);
 });
+
+test('service worker introduces no new external host on a controlled reload', async ({ page }) => {
+  await page.goto('/');
+  await dismissWelcomeModalIfPresent(page);
+
+  // Wait for SW to be active before measuring.
+  await page.waitForFunction(
+    async () => {
+      if (!('serviceWorker' in navigator)) return false;
+      const reg = await navigator.serviceWorker.getRegistration();
+      return Boolean(reg && reg.active);
+    },
+    null,
+    { timeout: 10_000 },
+  );
+
+  const violations: string[] = [];
+  page.on('request', (req) => {
+    const url = req.url();
+    if (url.startsWith('data:') || url.startsWith('blob:')) return;
+    if (!isExternal(url)) return;
+    if (!isAllowedUrl(url)) violations.push(url);
+  });
+
+  // Hard reload — SW is now controlling and serving from cache where it can.
+  await page.reload({ waitUntil: 'networkidle' });
+  await dismissWelcomeModalIfPresent(page);
+  await page.waitForTimeout(1500);
+
+  expect(
+    violations,
+    `SW-introduced disallowed external requests: ${JSON.stringify(violations, null, 2)}`,
+  ).toHaveLength(0);
+});
