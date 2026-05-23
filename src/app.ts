@@ -6,6 +6,7 @@ import { PlannerCard } from './ui/plannerCard';
 import { mountFab, mountFabStack } from './ui/fab';
 import { mountShowAllConesToggle } from './ui/showAllConesToggle';
 import { mountRouteSummaryCard } from './ui/routeSummaryCard';
+import { DirectionsPanel } from './ui/directionsPanel';
 import { renderDatasetFreshness } from './ui/datasetFreshness';
 import { renderCameraDetailPopup } from './ui/cameraDetailPopup';
 import { mountWelcomeModal, shouldShowWelcomeModal } from './ui/welcomeModal';
@@ -173,26 +174,54 @@ export async function startApp(): Promise<void> {
           // surveillanceScore is the per-route exposure value from RouteResult
           const shortestSensors = camerasNearPolyline(cameraStore.all(), cmp.shortest.polyline).length;
           const privateSensors = camerasNearPolyline(cameraStore.all(), cmp.private.polyline).length;
-          mountRouteSummaryCard(mapEl, {
-            comparison: {
-              shortest: {
-                distanceMeters: cmp.shortest.distanceMeters,
-                exposure: cmp.shortest.surveillanceScore,
-                sensorsAlong: shortestSensors,
-              },
-              private: {
-                distanceMeters: cmp.private.distanceMeters,
-                exposure: cmp.private.surveillanceScore,
-                sensorsAlong: privateSensors,
-              },
+          const originLabel = `${start.lat.toFixed(3)}, ${start.lon.toFixed(3)}`;
+          const destinationLabel = `${end.lat.toFixed(3)}, ${end.lon.toFixed(3)}`;
+          const summaryComparison = {
+            shortest: {
+              distanceMeters: cmp.shortest.distanceMeters,
+              exposure: cmp.shortest.surveillanceScore,
+              sensorsAlong: shortestSensors,
             },
-            originLabel: `${start.lat.toFixed(3)}, ${start.lon.toFixed(3)}`,
-            destinationLabel: `${end.lat.toFixed(3)}, ${end.lon.toFixed(3)}`,
-            profileName: String(currentProfile.preset),
-            onSelect: () => { /* future: re-style selected polyline */ },
-            onStart: () => { /* sub-project B: turn-by-turn */ },
-            onDetails: () => { /* future */ },
-          });
+            private: {
+              distanceMeters: cmp.private.distanceMeters,
+              exposure: cmp.private.surveillanceScore,
+              sensorsAlong: privateSensors,
+            },
+          };
+
+          let selectedRoute: 'shortest' | 'private' = 'private';
+          let directionsPanel: DirectionsPanel | null = null;
+
+          const mountSummary = (): void => {
+            mountRouteSummaryCard(mapEl, {
+              comparison: summaryComparison,
+              originLabel,
+              destinationLabel,
+              profileName: String(currentProfile.preset),
+              onSelect: (kind) => {
+                selectedRoute = kind;
+                if (directionsPanel) directionsPanel.setRoute(kind);
+              },
+              onStart: () => { /* live navigation is out of scope (hard product line) */ },
+              onDetails: () => {
+                const existingSummary = mapEl.querySelector('[data-route-summary-card]');
+                if (existingSummary) existingSummary.remove();
+                directionsPanel = new DirectionsPanel(mapEl, {
+                  comparison: cmp,
+                  initialSelectedRoute: selectedRoute,
+                  originLabel,
+                  destinationLabel,
+                  onClose: () => {
+                    if (directionsPanel) directionsPanel.destroy();
+                    directionsPanel = null;
+                    mountSummary();
+                  },
+                });
+              },
+            });
+          };
+
+          mountSummary();
 
           // Update show-all cones with new profile if toggled on
           if (showAllPressed) {

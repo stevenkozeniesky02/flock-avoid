@@ -1,4 +1,5 @@
 import type { ThreatProfile } from './threatProfile';
+import type { RouteManeuver } from './maneuver';
 
 export interface GeoPoint {
   readonly lat: number;
@@ -11,6 +12,7 @@ export interface RouteResult {
   readonly durationSeconds: number;
   readonly camerasOnRoute: number;
   readonly surveillanceScore: number;
+  readonly maneuvers: readonly RouteManeuver[];
 }
 
 export type DegradationReason = 'no_private_path';
