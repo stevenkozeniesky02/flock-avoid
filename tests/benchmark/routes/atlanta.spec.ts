@@ -3,10 +3,14 @@ import { planRoute, skipIfNoValhalla, type BenchmarkRoute } from '../helpers/ben
 
 skipIfNoValhalla('Atlanta');
 
+// Each planRoute call: ~15 s map load + 1.5 s settle + 5 s autocomplete x 2 + 25 s routing = ~52 s.
+// Set 90 s per-test to absorb worker contention without flaking.
+test.setTimeout(90_000);
+
 const ROUTES: readonly BenchmarkRoute[] = [
-  { name: 'downtown-crossing',  startClick: { x: 300, y: 220 }, endClick: { x: 420, y: 320 } },
-  { name: 'commute-to-suburb',  startClick: { x: 320, y: 250 }, endClick: { x: 550, y: 180 } },
-  { name: 'sensitive-site-adj', startClick: { x: 180, y: 480 }, endClick: { x: 640, y: 180 } },
+  { name: 'downtown-crossing',  origin: 'Centennial Olympic Park, Atlanta',  destination: 'Mercedes-Benz Stadium, Atlanta' },
+  { name: 'commute-to-suburb',  origin: 'Krog Street Market, Atlanta',       destination: 'Decatur Square, Decatur' },
+  { name: 'sensitive-site-adj', origin: 'CDC Headquarters, Atlanta',         destination: 'Emory University, Atlanta' },
 ];
 
 for (const route of ROUTES) {
