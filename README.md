@@ -22,6 +22,8 @@ npm install
 npm run dev
 ```
 
+For nationwide routing instead of Atlanta-only, see [docs/VALHALLA.md](docs/VALHALLA.md) — the full-US build is a multi-hour, ~100 GB working-disk operation behind one extra npm script.
+
 Open http://localhost:5173. The app fetches the latest published camera dataset from this repo's GitHub Releases by default. Pick a profile (Commuter / Activist / Vulnerable / Custom). Click **Set Start on map**, then click the map. Click **Set End on map**, then click somewhere else. Click **Plan route** — see Shortest vs Private routes with the "N cameras avoided" diff line.
 
 To stop Valhalla: `npm run valhalla:down`.
@@ -76,7 +78,7 @@ npx vitest run tests/unit
 
 ## If `build-valhalla-tiles.sh` fails with `502`/`503` from Geofabrik
 
-[download.geofabrik.de](https://download.geofabrik.de) is having an outage. Wait a few minutes and re-run. If it stays down, edit `docker-compose.yml` and change `tile_urls` to a working mirror (e.g. `https://download.openstreetmap.fr/extracts/north-america/us/georgia.osm.pbf`), then `npm run valhalla:down && ./scripts/build-valhalla-tiles.sh`.
+[download.geofabrik.de](https://download.geofabrik.de) is having an outage. Wait a few minutes and re-run. If it stays down, edit `docker-compose.yml` and change `tile_urls` to a working mirror (e.g. `https://download.openstreetmap.fr/extracts/north-america/us/georgia.osm.pbf`), then `npm run valhalla:down && ./scripts/build-valhalla-tiles.sh`. The same mirror trick applies to the full-US build — see [docs/VALHALLA.md](docs/VALHALLA.md#mirrors) for the maintained list.
 
 ## Layout
 
