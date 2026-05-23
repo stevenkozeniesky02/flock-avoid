@@ -19,7 +19,8 @@
     "valhalla:build-tiles": "./scripts/build-valhalla-tiles.sh",
     "valhalla:build-tiles:us": "./scripts/build-valhalla-tiles-us.sh",
     "build:dataset": "tsx scripts/build-dataset/run.ts",
-    "build:dataset:fixture": "DEFLOCK_INDEX_FIXTURE=scripts/build-dataset/fixtures/deflock-index.json DEFLOCK_TILE_FIXTURE=scripts/build-dataset/fixtures/deflock-tile-sample.json OSM_FIXTURE=scripts/build-dataset/fixtures/osm-sample.json OUT_DIR=./dist-dataset tsx scripts/build-dataset/run.ts"
+    "build:dataset:fixture": "DEFLOCK_INDEX_FIXTURE=scripts/build-dataset/fixtures/deflock-index.json DEFLOCK_TILE_FIXTURE=scripts/build-dataset/fixtures/deflock-tile-sample.json OSM_FIXTURE=scripts/build-dataset/fixtures/osm-sample.json OUT_DIR=./dist-dataset tsx scripts/build-dataset/run.ts",
+    "deploy:caddy:validate": "docker run --rm -v $(pwd)/deploy:/etc/caddy:ro -w /etc/caddy caddy:2-alpine caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile"
   },
   "dependencies": {
     "maplibre-gl": "^4.7.0"
